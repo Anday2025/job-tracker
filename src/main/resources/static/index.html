@@ -7,43 +7,32 @@
     <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+
 <header class="container header">
-    <div>
-        <h1 id="t_title">Jobbsøker-tracker</h1>
-        <p class="muted" id="t_subtitle">Hold oversikt over søknadene dine.</p>
+    <div class="titleRow">
+        <div>
+            <h1 id="t_title">Jobbsøker-tracker</h1>
+            <p class="muted" id="t_subtitle">Hold oversikt over søknadene dine.</p>
+        </div>
+
+        <!-- NO/EN ved siden av tittelen -->
+        <div class="langSwitch" aria-label="Language switch">
+            <button id="langNoBtn" class="langBtn active" type="button">NO</button>
+            <button id="langEnBtn" class="langBtn" type="button">EN</button>
+        </div>
     </div>
 
+    <!-- Logg inn / Logg ut oppe til høyre -->
     <div class="headerRight">
-        <button id="langBtn" class="pillBtn" type="button">EN</button>
-        <div class="authbar">
-            <span id="whoami" class="pill">Ikke innlogget</span>
-            <button id="logoutBtn" class="ghost hidden" type="button">Logg ut</button>
-        </div>
+        <span id="whoami" class="pill hidden">—</span>
+
+        <button id="openLoginBtn" class="pillBtn" type="button">Logg inn</button>
+        <button id="logoutBtn" class="ghost hidden" type="button">Logg ut</button>
     </div>
 </header>
 
 <main class="container grid">
-    <!-- LOGIN CARD -->
-    <section class="loginWrap" id="authCard">
-        <div class="loginCard">
-            <h2 id="t_loginTitle">Logg inn</h2>
-
-            <form id="authForm" class="loginForm">
-                <input id="authEmail" type="email" autocomplete="email" placeholder="E-post" required />
-                <input id="authPassword" type="password" autocomplete="current-password" placeholder="Passord" required />
-
-                <button id="authSubmitBtn" class="primaryBtn" type="submit">Logg inn</button>
-
-                <div class="loginRow">
-                    <button id="toggleAuthMode" class="linkBtn" type="button">Opprett bruker</button>
-                </div>
-
-                <div id="authMsg" class="msg"></div>
-            </form>
-        </div>
-    </section>
-
-    <!-- APP CARD -->
+    <!-- APP CARD (skjult før login) -->
     <section class="card hidden" id="appCard">
         <div class="row">
             <h2 id="t_appsTitle">Søknader</h2>
@@ -62,20 +51,21 @@
         <div class="split">
             <section class="subcard">
                 <h3 id="t_newAppTitle">Ny søknad</h3>
+
                 <form id="createForm" class="form">
                     <label>
                         <span id="t_companyLabel">Firma *</span>
-                        <input name="company" required placeholder="F.eks. DNB / Telenor" id="t_companyPh" />
+                        <input name="company" required placeholder="F.eks. DNB / Telenor" />
                     </label>
 
                     <label>
                         <span id="t_roleLabel">Stilling *</span>
-                        <input name="role" required placeholder="F.eks. Junior utvikler" id="t_rolePh" />
+                        <input name="role" required placeholder="F.eks. Junior utvikler" />
                     </label>
 
                     <label>
                         <span id="t_linkLabel">Link</span>
-                        <input name="link" placeholder="https://..." id="t_linkPh" />
+                        <input name="link" placeholder="https://..." />
                     </label>
 
                     <label>
@@ -99,6 +89,30 @@
 <footer class="container muted small" id="t_footer">
     Bygget med Java (Spring Boot) + vanilla JS + JWT.
 </footer>
+
+<!-- LOGIN MODAL (åpnes når man trykker Logg inn) -->
+<div id="authModal" class="modal hidden" aria-hidden="true">
+    <div class="modalBox" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+        <button id="closeAuthModal" class="modalClose" type="button" aria-label="Close">✕</button>
+
+        <h2 id="authTitle">Logg inn</h2>
+
+        <form id="authForm" class="modalForm">
+            <label class="srOnly" for="authEmail">E-post</label>
+            <input id="authEmail" type="email" autocomplete="email" placeholder="E-post" required />
+
+            <label class="srOnly" for="authPassword">Passord</label>
+            <input id="authPassword" type="password" autocomplete="current-password" placeholder="Passord (min 6 tegn)" required />
+
+            <div id="authMsg" class="msg"></div>
+
+            <div class="modalActions">
+                <button id="authSubmitBtn" class="primaryBtn" type="submit">Logg inn</button>
+                <button id="toggleAuthMode" class="secondaryBtn" type="button">Opprett bruker</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script src="app.js"></script>
 </body>

@@ -1,309 +1,300 @@
-// -------------------------
-// Settings / storage keys
-// -------------------------
-const STORAGE_TOKEN = "jt_token";
-const STORAGE_LANG  = "jt_lang"; // "no" eller "en"
-
-// -------------------------
-// DOM
-// -------------------------
+// ====== STATE ======
 let currentFilter = "ALL";
+let authMode = "login"; // "login" | "register"
+let lang = localStorage.getItem("lang") || "no"; // husk språkvalg
+let token = localStorage.getItem("token") || null;
+let meEmail = null;
 
+// ====== ELEMENTS ======
 const listEl = document.getElementById("list");
 const statsEl = document.getElementById("stats");
 const form = document.getElementById("createForm");
 const formMsg = document.getElementById("formMsg");
 
-const whoamiEl = document.getElementById("whoami");
 const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
+const whoamiEl = document.getElementById("whoami");
 const langBtn = document.getElementById("langBtn");
-const loginHint = document.getElementById("loginHint");
 
 const modal = document.getElementById("authModal");
 const closeAuth = document.getElementById("closeAuth");
 const authForm = document.getElementById("authForm");
 const authEmail = document.getElementById("authEmail");
 const authPassword = document.getElementById("authPassword");
-const authMsg = document.getElementById("authMsg");
-const authTitle = document.getElementById("authTitle");
 const authSubmitBtn = document.getElementById("authSubmitBtn");
 const toggleAuthModeBtn = document.getElementById("toggleAuthMode");
+const authMsg = document.getElementById("authMsg");
+const authTitle = document.getElementById("authTitle");
 
-// -------------------------
-// i18n
-// -------------------------
+// ====== i18n ======
 const I18N = {
   no: {
     title: "Jobbsøker-tracker",
     subtitle: "Hold oversikt over søknadene dine.",
-    appsTitle: "Søknader",
-    newAppTitle: "Ny søknad",
-    listTitle: "Liste",
-    notLogged: "Ikke innlogget",
     login: "Logg inn",
     logout: "Logg ut",
-    email: "E-post",
-    password: "Passord",
-    register: "Opprett bruker",
-    loginTitle: "Logg inn",
-    registerTitle: "Opprett bruker",
-    add: "Legg til",
+    notLogged: "Ikke innlogget",
+    newApp: "Ny søknad",
     company: "Firma *",
+    companyPh: "F.eks. NAV / Telenor",
     role: "Stilling *",
+    rolePh: "F.eks. Junior utvikler",
     link: "Link",
+    linkPh: "https://...",
     deadline: "Frist",
+    add: "Legg til",
+    apps: "Søknader",
+    listTitle: "Liste",
     hint: "Logg inn for å lagre og se dine søknader.",
-    emptyListLoggedOut: "Ingen treff. Logg inn for å se dine søknader.",
-    emptyList: "Ingen treff.",
-    invalid: "Noe gikk galt",
-    requiredCompanyRole: "Firma og stilling er påkrevd.",
-    statusText: {
-      PLANLAGT: "Planlagt",
-      SOKT: "Søkt",
-      INTERVJU: "Intervju",
-      AVSLATT: "Avslått",
-      TILBUD: "Tilbud"
-    },
-    statsLabel: (c) =>
-      `Planlagt: ${c.PLANLAGT||0} • Søkt: ${c.SOKT||0} • Intervju: ${c.INTERVJU||0} • Tilbud: ${c.TILBUD||0} • Avslått: ${c.AVSLATT||0}`,
-    filters: { ALL:"Alle", PLANLAGT:"Planlagt", SOKT:"Søkt", INTERVJU:"Intervju", AVSLATT:"Avslått", TILBUD:"Tilbud" }
+    emptyLogin: "Ingen treff. Logg inn for å se dine søknader.",
+    filters: { ALL:"Alle", PLANLAGT:"Planlagt", SOKT:"Søkt", INTERVJU:"Intervju", AVSLATT:"Avslått", TILBUD:"Tilbud" },
+    modalLoginTitle: "Logg inn",
+    modalRegisterTitle: "Opprett bruker",
+    emailPh: "E-post",
+    passPh: "Passord",
+    createUser: "Opprett bruker",
+    switchToRegister: "Opprett bruker",
+    switchToLogin: "Tilbake til innlogging",
+    okLogin: "Innlogget.",
+    okRegister: "Bruker opprettet. Du kan logge inn.",
+    badCredentials: "Feil e-post eller passord.",
+    genericErr: "Noe gikk galt.",
+    invalidToken: "Innlogging feilet (token).",
+    built: "Bygget med Java (Spring Boot) + vanilla JS + JWT."
   },
   en: {
-    title: "Job Tracker",
+    title: "Job tracker",
     subtitle: "Keep track of your applications.",
-    appsTitle: "Applications",
-    newAppTitle: "New application",
-    listTitle: "List",
-    notLogged: "Not signed in",
     login: "Sign in",
     logout: "Sign out",
-    email: "Email",
-    password: "Password",
-    register: "Create account",
-    loginTitle: "Sign in",
-    registerTitle: "Create account",
-    add: "Add",
+    notLogged: "Not signed in",
+    newApp: "New application",
     company: "Company *",
+    companyPh: "e.g. NAV / Telenor",
     role: "Role *",
+    rolePh: "e.g. Junior developer",
     link: "Link",
+    linkPh: "https://...",
     deadline: "Deadline",
+    add: "Add",
+    apps: "Applications",
+    listTitle: "List",
     hint: "Sign in to save and view your applications.",
-    emptyListLoggedOut: "No results. Sign in to view your applications.",
-    emptyList: "No results.",
-    invalid: "Something went wrong",
-    requiredCompanyRole: "Company and role are required.",
-    statusText: {
-      PLANLAGT: "Planned",
-      SOKT: "Applied",
-      INTERVJU: "Interview",
-      AVSLATT: "Rejected",
-      TILBUD: "Offer"
-    },
-    statsLabel: (c) =>
-      `Planned: ${c.PLANLAGT||0} • Applied: ${c.SOKT||0} • Interview: ${c.INTERVJU||0} • Offer: ${c.TILBUD||0} • Rejected: ${c.AVSLATT||0}`,
-    filters: { ALL:"All", PLANLAGT:"Planned", SOKT:"Applied", INTERVJU:"Interview", AVSLATT:"Rejected", TILBUD:"Offer" }
+    emptyLogin: "No results. Sign in to view your applications.",
+    filters: { ALL:"All", PLANLAGT:"Planned", SOKT:"Applied", INTERVJU:"Interview", AVSLATT:"Rejected", TILBUD:"Offer" },
+    modalLoginTitle: "Sign in",
+    modalRegisterTitle: "Create account",
+    emailPh: "Email",
+    passPh: "Password",
+    createUser: "Create account",
+    switchToRegister: "Create account",
+    switchToLogin: "Back to sign in",
+    okLogin: "Signed in.",
+    okRegister: "Account created. You can sign in now.",
+    badCredentials: "Wrong email or password.",
+    genericErr: "Something went wrong.",
+    invalidToken: "Sign-in failed (token).",
+    built: "Built with Java (Spring Boot) + vanilla JS + JWT."
   }
 };
 
-function getLang(){
-  return localStorage.getItem(STORAGE_LANG) || "no";
-}
-function setLang(lang){
-  localStorage.setItem(STORAGE_LANG, lang);
-  applyLang();
-  // re-render list for translated labels
-  if (window.__appsCache) render(window.__appsCache);
-}
-function t(){
-  return I18N[getLang()];
-}
-function applyLang(){
-  const L = t();
-  document.documentElement.lang = getLang();
+function t() { return I18N[lang]; }
 
-  // header
-  document.getElementById("t_title").textContent = L.title;
-  document.getElementById("t_subtitle").textContent = L.subtitle;
+function applyI18n(){
+  document.documentElement.lang = lang;
 
-  // app
-  document.getElementById("t_appsTitle").textContent = L.appsTitle;
-  document.getElementById("t_newAppTitle").textContent = L.newAppTitle;
-  document.getElementById("t_listTitle").textContent = L.listTitle;
+  document.getElementById("t_title").textContent = t().title;
+  document.getElementById("t_subtitle").textContent = t().subtitle;
 
-  // filters
-  document.getElementById("t_f_all").textContent = L.filters.ALL;
-  document.getElementById("t_f_planned").textContent = L.filters.PLANLAGT;
-  document.getElementById("t_f_applied").textContent = L.filters.SOKT;
-  document.getElementById("t_f_interview").textContent = L.filters.INTERVJU;
-  document.getElementById("t_f_rejected").textContent = L.filters.AVSLATT;
-  document.getElementById("t_f_offer").textContent = L.filters.TILBUD;
+  loginBtn.textContent = t().login;
+  logoutBtn.textContent = t().logout;
 
-  // form labels
-  document.getElementById("t_companyLabel").textContent = L.company;
-  document.getElementById("t_roleLabel").textContent = L.role;
-  document.getElementById("t_linkLabel").textContent = L.link;
-  document.getElementById("t_deadlineLabel").textContent = L.deadline;
-  document.getElementById("t_addBtn").textContent = L.add;
+  document.getElementById("t_newAppTitle").textContent = t().newApp;
+  document.getElementById("t_companyLabel").textContent = t().company;
+  document.getElementById("t_companyPh").setAttribute("placeholder", t().companyPh);
+  document.getElementById("t_roleLabel").textContent = t().role;
+  document.getElementById("t_rolePh").setAttribute("placeholder", t().rolePh);
+  document.getElementById("t_linkLabel").textContent = t().link;
+  document.getElementById("t_linkPh").setAttribute("placeholder", t().linkPh);
+  document.getElementById("t_deadlineLabel").textContent = t().deadline;
+  document.getElementById("t_addBtn").textContent = t().add;
 
-  // auth buttons
-  loginBtn.textContent = L.login;
-  logoutBtn.textContent = L.logout;
+  document.getElementById("t_appsTitle").textContent = t().apps;
+  document.getElementById("t_loginHint").textContent = t().hint;
+  document.getElementById("t_emptyLogin").textContent = t().emptyLogin;
 
-  // modal placeholders/titles set by mode:
-  updateAuthTexts();
-  loginHint.textContent = L.hint;
+  document.getElementById("t_f_all").textContent = t().filters.ALL;
+  document.getElementById("t_f_planned").textContent = t().filters.PLANLAGT;
+  document.getElementById("t_f_applied").textContent = t().filters.SOKT;
+  document.getElementById("t_f_interview").textContent = t().filters.INTERVJU;
+  document.getElementById("t_f_rejected").textContent = t().filters.AVSLATT;
+  document.getElementById("t_f_offer").textContent = t().filters.TILBUD;
 
-  document.getElementById("t_footer").textContent =
-    "Bygget med Java (Spring Boot) + vanilla JS + JWT.";
+  document.getElementById("t_footer").textContent = t().built;
+
+  // modal
+  authEmail.setAttribute("placeholder", t().emailPh);
+  authPassword.setAttribute("placeholder", t().passPh);
+  renderAuthMode();
 }
 
-let authMode = "login"; // "login" | "register"
-function updateAuthTexts(){
-  const L = t();
+// ====== AUTH UI ======
+function openModal(){
+  modal.classList.remove("hidden");
+  document.body.classList.add("modalOpen");
+  authMsg.textContent = "";
+  authMsg.classList.remove("ok");
+  setTimeout(()=>authEmail.focus(), 0);
+}
+function closeModal(){
+  modal.classList.add("hidden");
+  document.body.classList.remove("modalOpen");
+}
+
+function setLoggedInUI(email){
+  meEmail = email;
+  whoamiEl.textContent = email;
+  whoamiEl.classList.remove("hidden");
+
+  loginBtn.classList.add("hidden");
+  logoutBtn.classList.remove("hidden");
+
+  enableApp(true);
+}
+
+function setLoggedOutUI(){
+  meEmail = null;
+  whoamiEl.textContent = t().notLogged;
+  whoamiEl.classList.add("hidden"); // i dine bilder vises ikke pill når du ikke er innlogget
+
+  loginBtn.classList.remove("hidden");
+  logoutBtn.classList.add("hidden");
+
+  enableApp(false);
+  render([]); // tom liste med login-tekst
+}
+
+function enableApp(enabled){
+  // når ikke innlogget: la designet vises, men ikke la submit/kall gå.
+  const inputs = form.querySelectorAll("input, button");
+  inputs.forEach(el => {
+    if (el.id === "t_addBtn" || el.tagName === "INPUT") {
+      el.disabled = !enabled;
+    }
+  });
+
+  // filter-knapper skal fortsatt kunne trykkes (men liste lastes ikke)
+}
+
+function renderAuthMode(){
   if (authMode === "login"){
-    authTitle.textContent = L.loginTitle;
-    authSubmitBtn.textContent = L.login;
-    toggleAuthModeBtn.textContent = L.register;
-    authEmail.placeholder = L.email;
-    authPassword.placeholder = L.password;
+    authTitle.textContent = t().modalLoginTitle;
+    authSubmitBtn.textContent = t().login;
+    toggleAuthModeBtn.textContent = t().switchToRegister;
     authPassword.autocomplete = "current-password";
   } else {
-    authTitle.textContent = L.registerTitle;
-    authSubmitBtn.textContent = L.register;
-    toggleAuthModeBtn.textContent = L.login;
-    authEmail.placeholder = L.email;
-    authPassword.placeholder = L.password;
+    authTitle.textContent = t().modalRegisterTitle;
+    authSubmitBtn.textContent = t().createUser;
+    toggleAuthModeBtn.textContent = t().switchToLogin;
     authPassword.autocomplete = "new-password";
   }
 }
 
-// -------------------------
-// Auth helpers
-// -------------------------
-function getToken(){
-  return localStorage.getItem(STORAGE_TOKEN) || "";
-}
-function setToken(token){
-  if (!token) localStorage.removeItem(STORAGE_TOKEN);
-  else localStorage.setItem(STORAGE_TOKEN, token);
-}
-function setAuthMessage(msg, isError=false){
-  authMsg.textContent = msg || "";
-  authMsg.classList.toggle("error", !!isError);
-}
-function setFormMessage(msg, isError=false){
-  formMsg.textContent = msg || "";
-  formMsg.classList.toggle("error", !!isError);
+// ====== TOKEN / FETCH ======
+function saveToken(newToken){
+  token = newToken;
+  if (token) localStorage.setItem("token", token);
+  else localStorage.removeItem("token");
 }
 
-function openModal(){
-  modal.classList.remove("hidden");
-  setAuthMessage("");
-  // fokus på e-post
-  setTimeout(() => authEmail.focus(), 0);
-}
-function closeModal(){
-  modal.classList.add("hidden");
-  setAuthMessage("");
-}
-
-// -------------------------
-// fetch wrapper with JWT
-// -------------------------
-async function apiFetch(url, options = {}){
-  const token = getToken();
+async function authFetch(url, options = {}){
   const headers = new Headers(options.headers || {});
-  if (!headers.has("Content-Type") && options.body) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
-
-  const res = await fetch(url, { ...options, headers });
-
-  // Hvis token er feil/utløpt: rydde opp, men IKKE åpne modal automatisk
-  if (res.status === 401 || res.status === 403){
-    // Viktig: ikke loop
-    if (getToken()){
-      setToken("");
-      setLoggedOutUI();
-    }
-  }
-  return res;
+  return fetch(url, { ...options, headers });
 }
 
-// -------------------------
-// UI state: logged in/out
-// -------------------------
-function setLoggedOutUI(){
-  whoamiEl.textContent = t().notLogged;
-  loginBtn.classList.remove("hidden");
-  logoutBtn.classList.add("hidden");
-  loginHint.classList.remove("hidden");
-  statsEl.textContent = "—";
-  listEl.innerHTML = `<div class="muted">${t().emptyListLoggedOut}</div>`;
+// Denne gjør at vi tåler ulike backend-svar: {token}, {accessToken}, {jwt}, {data:{token}}, string osv.
+async function readTokenFromResponse(res){
+  const ct = (res.headers.get("content-type") || "").toLowerCase();
+  if (ct.includes("application/json")){
+    const data = await res.json();
+    const maybe =
+      data?.token ||
+      data?.accessToken ||
+      data?.jwt ||
+      data?.access_token ||
+      data?.data?.token ||
+      data?.data?.accessToken ||
+      null;
+    return { token: maybe, data };
+  } else {
+    const text = await res.text();
+    // hvis backend returnerer raw token-string
+    const trimmed = (text || "").trim();
+    return { token: trimmed || null, data: text };
+  }
 }
 
-function setLoggedInUI(email){
-  whoamiEl.textContent = email || "—";
-  loginBtn.classList.add("hidden");
-  logoutBtn.classList.remove("hidden");
-  loginHint.classList.add("hidden");
+// ====== API: AUTH ======
+async function apiMe(){
+  if (!token) return null;
+  const res = await authFetch("/api/auth/me");
+  if (!res.ok) return null;
+  const data = await res.json();
+  // backend kan returnere {email:".."} eller {username:".."}
+  return data.email || data.username || data.user || null;
 }
 
-// -------------------------
-// App: filters
-// -------------------------
-document.querySelectorAll(".filter").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".filter").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-    currentFilter = btn.dataset.filter;
-    if (window.__appsCache) render(window.__appsCache);
-  });
-});
-
-// -------------------------
-// Create application
-// -------------------------
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  setFormMessage("");
-
-  // Ikke la folk poste hvis de ikke er logget inn
-  if (!getToken()){
-    openModal();
-    return;
-  }
-
-  const data = new FormData(form);
-  const payload = {
-    company: (data.get("company") || "").trim(),
-    role: (data.get("role") || "").trim(),
-    link: (data.get("link") || "").trim(),
-    deadline: data.get("deadline") || null
-  };
-
-  if (!payload.company || !payload.role){
-    setFormMessage(t().requiredCompanyRole, true);
-    return;
-  }
-
-  const res = await apiFetch("/api/apps", {
+async function apiLogin(email, password){
+  const res = await fetch("/api/auth/login", {
     method: "POST",
-    body: JSON.stringify(payload)
+    headers: { "Content-Type": "application/json" },
+    // send både email og username for å være kompatibel med ulike backend-DTOer
+    body: JSON.stringify({ email, username: email, password })
   });
 
-  if (!res.ok) {
-    const text = await safeText(res);
-    setFormMessage(text || t().invalid, true);
-    return;
+  if (!res.ok){
+    const text = await res.text().catch(()=> "");
+    throw new Error(text || String(res.status));
   }
 
-  form.reset();
-  await load();
-});
+  const { token: tok } = await readTokenFromResponse(res);
+  if (!tok) throw new Error("NO_TOKEN");
+  return tok;
+}
 
+async function apiRegister(email, password){
+  const res = await fetch("/api/auth/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, username: email, password })
+  });
+
+  if (!res.ok){
+    const text = await res.text().catch(()=> "");
+    throw new Error(text || String(res.status));
+  }
+  return true;
+}
+
+// ====== APP LOGIC ======
 function badge(status) {
-  return t().statusText[status] ?? status;
+  const mapNo = {
+    PLANLAGT: "Planlagt",
+    SOKT: "Søkt",
+    INTERVJU: "Intervju",
+    AVSLATT: "Avslått",
+    TILBUD: "Tilbud"
+  };
+  const mapEn = {
+    PLANLAGT: "Planned",
+    SOKT: "Applied",
+    INTERVJU: "Interview",
+    AVSLATT: "Rejected",
+    TILBUD: "Offer"
+  };
+  const map = (lang === "no") ? mapNo : mapEn;
+  return map[status] ?? status;
 }
 
 function fmtDate(d) {
@@ -319,25 +310,21 @@ function isOverdue(deadline, status) {
   return dd < new Date(today.getFullYear(), today.getMonth(), today.getDate());
 }
 
-async function updateStatus(id, status) {
-  if (!getToken()) return;
-
-  await apiFetch(`/api/apps/${id}/status`, {
-    method: "PUT",
-    body: JSON.stringify({ status })
-  });
-  await load();
-}
-
-async function removeItem(id) {
-  if (!getToken()) return;
-
-  await apiFetch(`/api/apps/${id}`, { method: "DELETE" });
-  await load();
+function escapeHtml(str) {
+  return (str ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;");
 }
 
 function render(apps) {
-  window.__appsCache = apps;
+  // hvis ikke innlogget: behold teksten “logg inn”
+  if (!token){
+    statsEl.textContent = "—";
+    listEl.innerHTML = `<div class="muted" id="t_emptyLogin">${t().emptyLogin}</div>`;
+    return;
+  }
 
   const filtered = currentFilter === "ALL"
     ? apps
@@ -347,10 +334,15 @@ function render(apps) {
     acc[a.status] = (acc[a.status] || 0) + 1;
     return acc;
   }, {});
-  statsEl.textContent = t().statsLabel(counts);
+  statsEl.textContent =
+    `${badge("PLANLAGT")}: ${counts.PLANLAGT || 0} • ` +
+    `${badge("SOKT")}: ${counts.SOKT || 0} • ` +
+    `${badge("INTERVJU")}: ${counts.INTERVJU || 0} • ` +
+    `${badge("TILBUD")}: ${counts.TILBUD || 0} • ` +
+    `${badge("AVSLATT")}: ${counts.AVSLATT || 0}`;
 
   if (filtered.length === 0) {
-    listEl.innerHTML = `<div class="muted">${getToken() ? t().emptyList : t().emptyListLoggedOut}</div>`;
+    listEl.innerHTML = `<div class="muted">${lang==="no" ? "Ingen treff." : "No results."}</div>`;
     return;
   }
 
@@ -360,26 +352,27 @@ function render(apps) {
     el.className = "item" + (isOverdue(a.deadline, a.status) ? " overdue" : "");
 
     const link = a.link
-      ? `<a href="${escapeHtml(a.link)}" target="_blank" rel="noreferrer">Link</a>`
-      : `<span class="muted">—</span>`;
+      ? `<a href="${a.link}" target="_blank" rel="noreferrer">Link</a>`
+      : `<span class="muted">${lang==="no" ? "Ingen link" : "No link"}</span>`;
 
     el.innerHTML = `
       <div class="top">
         <div>
           <div class="title">${escapeHtml(a.company)} — ${escapeHtml(a.role)}</div>
           <div class="meta">
-            <span>${getLang()==="no" ? "Frist" : "Deadline"}: <span class="badge">${fmtDate(a.deadline)}</span></span>
-            <span>${getLang()==="no" ? "Status" : "Status"}: <span class="badge">${badge(a.status)}</span></span>
+            <span>${lang==="no" ? "Frist" : "Deadline"}: <span class="badge">${fmtDate(a.deadline)}</span></span>
+            <span>${lang==="no" ? "Status" : "Status"}: <span class="badge">${badge(a.status)}</span></span>
             <span>${link}</span>
           </div>
         </div>
+
         <div class="actions">
           <select data-id="${a.id}" class="statusSelect">
             ${["PLANLAGT","SOKT","INTERVJU","AVSLATT","TILBUD"].map(s =>
               `<option value="${s}" ${s===a.status ? "selected" : ""}>${badge(s)}</option>`
             ).join("")}
           </select>
-          <button class="btn ghost" data-del="${a.id}">${getLang()==="no" ? "Slett" : "Delete"}</button>
+          <button class="btn ghost" data-del="${a.id}" type="button">${lang==="no" ? "Slett" : "Delete"}</button>
         </div>
       </div>
     `;
@@ -396,144 +389,200 @@ function render(apps) {
 }
 
 async function load() {
-  // Ikke hent apps hvis ikke logget inn (hindrer 401-spam)
-  if (!getToken()){
+  if (!token){
     render([]);
     return;
   }
 
-  const res = await apiFetch("/api/apps");
-  if (!res.ok) {
-    // 401 håndteres i apiFetch (token fjernes)
-    render([]);
+  const res = await authFetch("/api/apps");
+  if (res.status === 401){
+    // token ugyldig/utløpt
+    saveToken(null);
+    setLoggedOutUI();
+    openModal();
     return;
   }
+
   const apps = await res.json();
   render(apps);
 }
 
-// -------------------------
-// Auth: login/register/me/logout
-// -------------------------
-loginBtn.addEventListener("click", () => {
-  authMode = "login";
-  updateAuthTexts();
-  openModal();
+async function updateStatus(id, status) {
+  const res = await authFetch(`/api/apps/${id}/status`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status })
+  });
+
+  if (res.status === 401){
+    saveToken(null);
+    setLoggedOutUI();
+    openModal();
+    return;
+  }
+  await load();
+}
+
+async function removeItem(id) {
+  const res = await authFetch(`/api/apps/${id}`, { method: "DELETE" });
+  if (res.status === 401){
+    saveToken(null);
+    setLoggedOutUI();
+    openModal();
+    return;
+  }
+  await load();
+}
+
+// ====== EVENTS ======
+document.querySelectorAll(".filter").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentFilter = btn.dataset.filter;
+    load();
+  });
 });
 
-logoutBtn.addEventListener("click", async () => {
-  setToken("");
-  setLoggedOutUI();
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  formMsg.textContent = "";
+  formMsg.classList.remove("ok");
+
+  if (!token){
+    formMsg.textContent = lang==="no" ? "Du må logge inn." : "You must sign in.";
+    openModal();
+    return;
+  }
+
+  const data = new FormData(form);
+  const payload = {
+    company: data.get("company"),
+    role: data.get("role"),
+    link: data.get("link"),
+    deadline: data.get("deadline")
+  };
+
+  const res = await authFetch("/api/apps", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (res.status === 401){
+    saveToken(null);
+    setLoggedOutUI();
+    openModal();
+    return;
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(()=> "");
+    formMsg.textContent = text || t().genericErr;
+    return;
+  }
+
+  form.reset();
   await load();
 });
 
-toggleAuthModeBtn.addEventListener("click", () => {
-  authMode = authMode === "login" ? "register" : "login";
-  updateAuthTexts();
-  setAuthMessage("");
+loginBtn.addEventListener("click", () => openModal());
+closeAuth.addEventListener("click", () => closeModal());
+modal.addEventListener("click", (e) => {
+  if (e.target === modal) closeModal();
 });
 
-closeAuth.addEventListener("click", closeModal);
-modal.querySelector(".backdrop").addEventListener("click", closeModal);
-window.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !modal.classList.contains("hidden")) closeModal();
+toggleAuthModeBtn.addEventListener("click", () => {
+  authMode = (authMode === "login") ? "register" : "login";
+  authMsg.textContent = "";
+  authMsg.classList.remove("ok");
+  renderAuthMode();
+});
+
+logoutBtn.addEventListener("click", async () => {
+  saveToken(null);
+  setLoggedOutUI();
+  render([]);
+});
+
+langBtn.addEventListener("click", () => {
+  lang = (lang === "no") ? "en" : "no";
+  localStorage.setItem("lang", lang);
+  applyI18n();
+  // rerender med nye labels
+  load();
 });
 
 authForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  setAuthMessage("");
+  authMsg.textContent = "";
+  authMsg.classList.remove("ok");
 
   const email = (authEmail.value || "").trim();
   const password = (authPassword.value || "").trim();
 
-  if (!email || !password){
-    setAuthMessage(t().invalid, true);
-    return;
-  }
+  try {
+    if (authMode === "register") {
+      await apiRegister(email, password);
+      authMsg.textContent = t().okRegister;
+      authMsg.classList.add("ok");
+      // Bytt automatisk til login
+      authMode = "login";
+      renderAuthMode();
+      return;
+    }
 
-  const endpoint = authMode === "login" ? "/api/auth/login" : "/api/auth/register";
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type":"application/json" },
-    body: JSON.stringify({ email, password })
-  });
+    // login
+    const tok = await apiLogin(email, password);
+    saveToken(tok);
 
-  if (!res.ok){
-    const txt = await safeText(res);
-    setAuthMessage(txt || t().invalid, true);
-    return;
-  }
+    // Hent /me for å få e-post som skal vises oppe til høyre
+    const me = await apiMe();
+    if (!me){
+      // token lagret men /me feiler => backend mismatch / token ugyldig
+      saveToken(null);
+      throw new Error("NO_ME");
+    }
 
-  const data = await safeJson(res);
+    authMsg.textContent = t().okLogin;
+    authMsg.classList.add("ok");
 
-  // Støtter flere vanlige feltnavn:
-  const token = data?.token || data?.accessToken || data?.jwt || "";
-  if (!token){
-    setAuthMessage("Mangler token fra server.", true);
-    return;
-  }
-
-  setToken(token);
-  setAuthMessage("OK");
-
-  // Hent hvem som er innlogget
-  const meRes = await apiFetch("/api/auth/me");
-  if (meRes.ok){
-    const me = await safeJson(meRes);
-    setLoggedInUI(me?.email || email);
+    setLoggedInUI(me);
     closeModal();
     await load();
-  } else {
-    // hvis /me feiler -> logg ut igjen (token ugyldig)
-    setToken("");
-    setLoggedOutUI();
-    setAuthMessage("Innlogging feilet (token).", true);
+
+  } catch (err) {
+    const msg = String(err?.message || "");
+    if (msg === "NO_TOKEN" || msg === "NO_ME") {
+      authMsg.textContent = t().invalidToken;
+    } else if (msg.includes("401")) {
+      authMsg.textContent = t().badCredentials;
+    } else if (msg.includes("400")) {
+      authMsg.textContent = lang==="no"
+        ? "Ugyldig input (sjekk passordkrav)."
+        : "Invalid input (check password rules).";
+    } else {
+      authMsg.textContent = t().genericErr;
+    }
   }
 });
 
-// -------------------------
-// Language toggle
-// -------------------------
-langBtn.addEventListener("click", () => {
-  setLang(getLang() === "no" ? "en" : "no");
-});
+// ====== INIT ======
+applyI18n();
 
-// -------------------------
-// Utils
-// -------------------------
-function escapeHtml(str) {
-  return (str ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;");
-}
-
-async function safeText(res){
-  try { return (await res.text())?.trim(); } catch { return ""; }
-}
-async function safeJson(res){
-  try { return await res.json(); } catch { return null; }
-}
-
-// -------------------------
-// Boot
-// -------------------------
-applyLang();
-
+// Start: hvis token finnes -> prøv auto-login via /me
 (async function init(){
-  // Hvis vi har token: prøv /me. Hvis ikke: vis logged out.
-  if (getToken()){
-    const meRes = await apiFetch("/api/auth/me");
-    if (meRes.ok){
-      const me = await safeJson(meRes);
-      setLoggedInUI(me?.email || "—");
+  if (token){
+    const me = await apiMe();
+    if (me){
+      setLoggedInUI(me);
       await load();
       return;
     }
-    // apiFetch fjerner token ved 401/403
+    // ugyldig token
+    saveToken(null);
   }
 
   setLoggedOutUI();
-  await load();
+  render([]);
 })();

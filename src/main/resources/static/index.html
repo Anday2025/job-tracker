@@ -4,14 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Jobbsøker-tracker</title>
-
-    <!-- Viktig: dette fjerner /favicon.ico-kallet (som ga 401 hos deg) -->
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90'%3E%F0%9F%93%8C%3C/text%3E%3C/svg%3E">
-
     <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
-<div class="bgGlow" aria-hidden="true"></div>
+<div class="bgGlow"></div>
 
 <header class="container header">
     <div class="brand">
@@ -20,22 +17,55 @@
     </div>
 
     <div class="headerRight">
-        <button id="langBtn" class="btn pillBtn" type="button" aria-label="Bytt språk">NO/EN</button>
+        <button id="loginBtn" class="btn ghost" type="button">Logg inn</button>
 
-        <div class="authbar">
-            <span id="whoami" class="pill">Ikke innlogget</span>
-            <button id="loginBtn" class="btn ghost" type="button">Logg inn</button>
-            <button id="logoutBtn" class="btn ghost hidden" type="button">Logg ut</button>
-        </div>
+        <span id="whoami" class="pill hidden">—</span>
+        <button id="logoutBtn" class="btn ghost hidden" type="button">Logg ut</button>
+
+        <button id="langBtn" class="btn ghost" type="button">NO/EN</button>
     </div>
 </header>
 
-<main class="container grid">
-    <!-- APP -->
-    <section class="card" id="appCard">
+<main class="container grid" id="main">
+    <!-- LEFT: New application -->
+    <section class="card" id="leftCard">
+        <h2 id="t_newAppTitle">Ny søknad</h2>
+
+        <form id="createForm" class="form">
+            <label>
+                <span id="t_companyLabel">Firma *</span>
+                <input name="company" required placeholder="F.eks. NAV / Telenor" id="t_companyPh" />
+            </label>
+
+            <label>
+                <span id="t_roleLabel">Stilling *</span>
+                <input name="role" required placeholder="F.eks. Junior utvikler" id="t_rolePh" />
+            </label>
+
+            <label>
+                <span id="t_linkLabel">Link</span>
+                <input name="link" placeholder="https://..." id="t_linkPh" />
+            </label>
+
+            <label>
+                <span id="t_deadlineLabel">Frist</span>
+                <input name="deadline" type="date" />
+            </label>
+
+            <button class="btn primary" type="submit" id="t_addBtn">Legg til</button>
+            <div id="formMsg" class="msg"></div>
+
+            <div class="hint muted small" id="t_loginHint">
+                Logg inn for å lagre og se dine søknader.
+            </div>
+        </form>
+    </section>
+
+    <!-- RIGHT: List -->
+    <section class="card" id="rightCard">
         <div class="row">
             <h2 id="t_appsTitle">Søknader</h2>
-            <div class="pill stats" id="stats">—</div>
+            <div class="pill" id="stats">—</div>
         </div>
 
         <div class="filters">
@@ -47,46 +77,10 @@
             <button class="filter" data-filter="TILBUD" id="t_f_offer">Tilbud</button>
         </div>
 
-        <div class="split">
-            <section class="subcard">
-                <h3 id="t_newAppTitle">Ny søknad</h3>
-
-                <form id="createForm" class="form">
-                    <label>
-                        <span id="t_companyLabel">Firma *</span>
-                        <input name="company" required placeholder="F.eks. NAV / Telenor" />
-                    </label>
-
-                    <label>
-                        <span id="t_roleLabel">Stilling *</span>
-                        <input name="role" required placeholder="F.eks. Junior utvikler" />
-                    </label>
-
-                    <label>
-                        <span id="t_linkLabel">Link</span>
-                        <input name="link" placeholder="https://..." />
-                    </label>
-
-                    <label>
-                        <span id="t_deadlineLabel">Frist</span>
-                        <input name="deadline" type="date" />
-                    </label>
-
-                    <button type="submit" id="t_addBtn" class="btn primary full">Legg til</button>
-                    <div id="formMsg" class="msg"></div>
-                </form>
-
-                <div class="hint muted" id="loginHint">
-                    Logg inn for å lagre og se dine søknader.
-                </div>
-            </section>
-
-            <section class="subcard">
-                <div class="row">
-                    <h3 id="t_listTitle">Liste</h3>
-                </div>
-                <div id="list" class="list"></div>
-            </section>
+        <div id="list" class="list">
+            <div class="muted" id="t_emptyLogin">
+                Ingen treff. Logg inn for å se dine søknader.
+            </div>
         </div>
     </section>
 </main>
@@ -95,14 +89,12 @@
     Bygget med Java (Spring Boot) + vanilla JS + JWT.
 </footer>
 
-<!-- MODAL (som bildet 2) -->
+<!-- MODAL -->
 <div id="authModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-    <div class="backdrop" data-close="1"></div>
-
-    <div class="modalCard" role="document">
+    <div class="modalCard">
         <div class="modalTop">
-            <h2 id="authTitle">Logg inn</h2>
-            <button class="iconBtn" id="closeAuth" type="button" aria-label="Lukk">×</button>
+            <h3 id="authTitle">Logg inn</h3>
+            <button id="closeAuth" class="iconBtn" type="button" aria-label="Lukk">×</button>
         </div>
 
         <form id="authForm" class="modalForm">

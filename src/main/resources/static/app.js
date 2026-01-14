@@ -486,7 +486,7 @@ langBtn?.addEventListener("click", () => {
   applyLanguage();
 });
 
-/* ---------- boot ---------- */
+/* ---------- boot -------- */
 (async function boot() {
   applyLanguage();
 

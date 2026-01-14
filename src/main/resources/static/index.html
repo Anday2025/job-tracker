@@ -9,97 +9,94 @@
 <body>
 <header class="container header">
     <div>
-        <h1>Jobbsøker-tracker</h1>
-        <p class="muted">Hold oversikt over søknadene dine.</p>
+        <h1 id="t_title">Jobbsøker-tracker</h1>
+        <p class="muted" id="t_subtitle">Hold oversikt over søknadene dine.</p>
     </div>
 
-    <div class="authbar">
-        <span id="whoami" class="pill">Ikke innlogget</span>
-        <button id="logoutBtn" class="ghost hidden">Logg ut</button>
+    <div class="headerRight">
+        <button id="langBtn" class="pillBtn" type="button">EN</button>
+        <div class="authbar">
+            <span id="whoami" class="pill">Ikke innlogget</span>
+            <button id="logoutBtn" class="ghost hidden" type="button">Logg ut</button>
+        </div>
     </div>
 </header>
 
 <main class="container grid">
-    <!-- AUTH CARD -->
-    <section class="card" id="authCard">
-        <h2>Logg inn</h2>
+    <!-- LOGIN CARD -->
+    <section class="loginWrap" id="authCard">
+        <div class="loginCard">
+            <h2 id="t_loginTitle">Logg inn</h2>
 
-        <div class="tabs">
-            <button class="tab active" data-tab="login">Logg inn</button>
-            <button class="tab" data-tab="register">Registrer</button>
-        </div>
+            <form id="authForm" class="loginForm">
+                <input id="authEmail" type="email" autocomplete="email" placeholder="E-post" required />
+                <input id="authPassword" type="password" autocomplete="current-password" placeholder="Passord" required />
 
-        <form id="authForm" class="form">
-            <label>
-                E-post
-                <input id="authEmail" type="email" required placeholder="navn@epost.no" autocomplete="email" />
-            </label>
+                <button id="authSubmitBtn" class="primaryBtn" type="submit">Logg inn</button>
 
-            <label>
-                Passord
-                <input id="authPassword" type="password" required placeholder="Minst 6 tegn" autocomplete="current-password" />
-            </label>
+                <div class="loginRow">
+                    <button id="toggleAuthMode" class="linkBtn" type="button">Opprett bruker</button>
+                </div>
 
-            <button type="submit" id="authSubmitBtn">Logg inn</button>
-            <div id="authMsg" class="msg"></div>
-        </form>
-
-        <div class="muted small" style="margin-top:10px">
-            Tips: Bruk en e-post du husker. Passord lagres hash’et (BCrypt) i databasen.
+                <div id="authMsg" class="msg"></div>
+            </form>
         </div>
     </section>
 
     <!-- APP CARD -->
     <section class="card hidden" id="appCard">
         <div class="row">
-            <h2>Søknader</h2>
+            <h2 id="t_appsTitle">Søknader</h2>
             <div class="pill" id="stats">—</div>
         </div>
 
         <div class="filters">
-            <button class="filter active" data-filter="ALL">Alle</button>
-            <button class="filter" data-filter="PLANLAGT">Planlagt</button>
-            <button class="filter" data-filter="SOKT">Søkt</button>
-            <button class="filter" data-filter="INTERVJU">Intervju</button>
-            <button class="filter" data-filter="AVSLATT">Avslått</button>
-            <button class="filter" data-filter="TILBUD">Tilbud</button>
+            <button class="filter active" data-filter="ALL" id="t_f_all">Alle</button>
+            <button class="filter" data-filter="PLANLAGT" id="t_f_planned">Planlagt</button>
+            <button class="filter" data-filter="SOKT" id="t_f_applied">Søkt</button>
+            <button class="filter" data-filter="INTERVJU" id="t_f_interview">Intervju</button>
+            <button class="filter" data-filter="AVSLATT" id="t_f_rejected">Avslått</button>
+            <button class="filter" data-filter="TILBUD" id="t_f_offer">Tilbud</button>
         </div>
 
         <div class="split">
             <section class="subcard">
-                <h3>Ny søknad</h3>
+                <h3 id="t_newAppTitle">Ny søknad</h3>
                 <form id="createForm" class="form">
                     <label>
-                        Firma *
-                        <input name="company" required placeholder="F.eks. NAV / Telenor" />
+                        <span id="t_companyLabel">Firma *</span>
+                        <input name="company" required placeholder="F.eks. DNB / Telenor" id="t_companyPh" />
                     </label>
+
                     <label>
-                        Stilling *
-                        <input name="role" required placeholder="F.eks. Junior utvikler" />
+                        <span id="t_roleLabel">Stilling *</span>
+                        <input name="role" required placeholder="F.eks. Junior utvikler" id="t_rolePh" />
                     </label>
+
                     <label>
-                        Link
-                        <input name="link" placeholder="https://..." />
+                        <span id="t_linkLabel">Link</span>
+                        <input name="link" placeholder="https://..." id="t_linkPh" />
                     </label>
+
                     <label>
-                        Frist
+                        <span id="t_deadlineLabel">Frist</span>
                         <input name="deadline" type="date" />
                     </label>
 
-                    <button type="submit">Legg til</button>
+                    <button type="submit" id="t_addBtn">Legg til</button>
                     <div id="formMsg" class="msg"></div>
                 </form>
             </section>
 
             <section class="subcard">
-                <h3>Liste</h3>
+                <h3 id="t_listTitle">Liste</h3>
                 <div id="list" class="list"></div>
             </section>
         </div>
     </section>
 </main>
 
-<footer class="container muted small">
+<footer class="container muted small" id="t_footer">
     Bygget med Java (Spring Boot) + vanilla JS + JWT.
 </footer>
 

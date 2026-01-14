@@ -1,42 +1,47 @@
-// =====================
-// Config / constants
-// =====================
+// ======================
+// Settings
+// ======================
 const TOKEN_KEY = "jwt_token";
-const LANG_KEY = "lang"; // "no" | "en"
+const LANG_KEY  = "lang"; // "no" | "en"
 let currentFilter = "ALL";
-let authMode = "login"; // "login" | "register"
+let authMode = "login"; // login | register
+let lastApps = [];
 
-// =====================
-// i18n
-// =====================
-const i18n = {
+// ======================
+// i18n (NO/EN)
+// ======================
+const I18N = {
   no: {
     title: "Jobbsøker-tracker",
     subtitle: "Hold oversikt over søknadene dine.",
     login: "Logg inn",
     logout: "Logg ut",
-    register: "Opprett bruker",
+    email: "E-post",
+    password: "Passord",
+    createUser: "Opprett bruker",
     haveUser: "Har du bruker? Logg inn",
-    emailPh: "E-post",
-    passLoginPh: "Passord",
-    passRegPh: "Passord (min 6 tegn)",
+    lockedHint: "Logg inn for å lagre og se dine søknader.",
+    newTitle: "Ny søknad",
+    companyLabel: "Firma *",
+    companyPh: "F.eks. NAV / Telenor",
+    roleLabel: "Stilling *",
+    rolePh: "F.eks. Junior utvikler",
+    linkLabel: "Link",
+    linkPh: "https://...",
+    deadlineLabel: "Frist",
+    addBtn: "Legg til",
     appsTitle: "Søknader",
-    newAppTitle: "Ny søknad",
-    listTitle: "Liste",
-    add: "Legg til",
-    company: "Firma *",
-    role: "Stilling *",
-    link: "Link",
-    deadline: "Frist",
-    noResults: "Ingen treff.",
+    filters: { ALL:"Alle", PLANLAGT:"Planlagt", SOKT:"Søkt", INTERVJU:"Intervju", AVSLATT:"Avslått", TILBUD:"Tilbud" },
+    badge:   { PLANLAGT:"Planlagt", SOKT:"Søkt", INTERVJU:"Intervju", AVSLATT:"Avslått", TILBUD:"Tilbud" },
+    stats: (c) => `Planlagt: ${c.PLANLAGT||0} • Søkt: ${c.SOKT||0} • Intervju: ${c.INTERVJU||0} • Tilbud: ${c.TILBUD||0} • Avslått: ${c.AVSLATT||0}`,
+    noResults: "Ingen treff. Logg inn for å se dine søknader.",
     noLink: "Ingen link",
+    delete: "Slett",
+    deadlineTxt: "Frist",
+    statusTxt: "Status",
     invalidAuth: "Skriv inn gyldig e-post og passord (minst 6 tegn).",
     authFailed: "Kunne ikke autentisere.",
-    sessionExpired: "Sesjonen din er utløpt. Logg inn på nytt.",
-    delete: "Slett",
-    stats: (c) => `Planlagt: ${c.PLANLAGT||0} • Søkt: ${c.SOKT||0} • Intervju: ${c.INTERVJU||0} • Tilbud: ${c.TILBUD||0} • Avslått: ${c.AVSLATT||0}`,
-    badge: { PLANLAGT:"Planlagt", SOKT:"Søkt", INTERVJU:"Intervju", AVSLATT:"Avslått", TILBUD:"Tilbud" },
-    filters: { ALL:"Alle", PLANLAGT:"Planlagt", SOKT:"Søkt", INTERVJU:"Intervju", AVSLATT:"Avslått", TILBUD:"Tilbud" },
+    sessionExpired: "Sesjonen er utløpt. Logg inn på nytt.",
     footer: "Bygget med Java (Spring Boot) + vanilla JS + JWT."
   },
   en: {
@@ -44,28 +49,32 @@ const i18n = {
     subtitle: "Track your job applications.",
     login: "Sign in",
     logout: "Sign out",
-    register: "Create account",
+    email: "Email",
+    password: "Password",
+    createUser: "Create account",
     haveUser: "Already have an account? Sign in",
-    emailPh: "Email",
-    passLoginPh: "Password",
-    passRegPh: "Password (min 6 chars)",
+    lockedHint: "Sign in to save and view your applications.",
+    newTitle: "New application",
+    companyLabel: "Company *",
+    companyPh: "e.g. NAV / Telenor",
+    roleLabel: "Role *",
+    rolePh: "e.g. Junior developer",
+    linkLabel: "Link",
+    linkPh: "https://...",
+    deadlineLabel: "Deadline",
+    addBtn: "Add",
     appsTitle: "Applications",
-    newAppTitle: "New application",
-    listTitle: "List",
-    add: "Add",
-    company: "Company *",
-    role: "Role *",
-    link: "Link",
-    deadline: "Deadline",
-    noResults: "No results.",
+    filters: { ALL:"All", PLANLAGT:"Planned", SOKT:"Applied", INTERVJU:"Interview", AVSLATT:"Rejected", TILBUD:"Offer" },
+    badge:   { PLANLAGT:"Planned", SOKT:"Applied", INTERVJU:"Interview", AVSLATT:"Rejected", TILBUD:"Offer" },
+    stats: (c) => `Planned: ${c.PLANLAGT||0} • Applied: ${c.SOKT||0} • Interview: ${c.INTERVJU||0} • Offer: ${c.TILBUD||0} • Rejected: ${c.AVSLATT||0}`,
+    noResults: "No results. Sign in to view your applications.",
     noLink: "No link",
+    delete: "Delete",
+    deadlineTxt: "Deadline",
+    statusTxt: "Status",
     invalidAuth: "Enter a valid email and password (min 6 chars).",
     authFailed: "Authentication failed.",
     sessionExpired: "Session expired. Please sign in again.",
-    delete: "Delete",
-    stats: (c) => `Planned: ${c.PLANLAGT||0} • Applied: ${c.SOKT||0} • Interview: ${c.INTERVJU||0} • Offer: ${c.TILBUD||0} • Rejected: ${c.AVSLATT||0}`,
-    badge: { PLANLAGT:"Planned", SOKT:"Applied", INTERVJU:"Interview", AVSLATT:"Rejected", TILBUD:"Offer" },
-    filters: { ALL:"All", PLANLAGT:"Planned", SOKT:"Applied", INTERVJU:"Interview", AVSLATT:"Rejected", TILBUD:"Offer" },
     footer: "Built with Java (Spring Boot) + vanilla JS + JWT."
   }
 };
@@ -76,13 +85,64 @@ function getLang() {
 function setLang(lang) {
   localStorage.setItem(LANG_KEY, lang);
 }
-function t() {
-  return i18n[getLang()];
+function T() {
+  return I18N[getLang()];
 }
 
-// =====================
+// ======================
+// DOM
+// ======================
+const loginBtn = document.getElementById("loginBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const langBtn = document.getElementById("langBtn");
+const whoamiEl = document.getElementById("whoami");
+
+const authModal = document.getElementById("authModal");
+const closeModalBtn = document.getElementById("closeModal");
+const authTitleEl = document.getElementById("authTitle");
+const authForm = document.getElementById("authForm");
+const authEmail = document.getElementById("authEmail");
+const authPassword = document.getElementById("authPassword");
+const authMsg = document.getElementById("authMsg");
+const authSubmitBtn = document.getElementById("authSubmitBtn");
+const toggleAuthModeBtn = document.getElementById("toggleAuthMode");
+
+const createForm = document.getElementById("createForm");
+const formMsg = document.getElementById("formMsg");
+const listEl = document.getElementById("list");
+const statsEl = document.getElementById("stats");
+
+const lockedHint = document.getElementById("lockedHint");
+
+const companyInput = document.getElementById("companyInput");
+const roleInput = document.getElementById("roleInput");
+const linkInput = document.getElementById("linkInput");
+const deadlineInput = document.getElementById("deadlineInput");
+
+// text nodes
+const t_title = document.getElementById("t_title");
+const t_subtitle = document.getElementById("t_subtitle");
+const t_newTitle = document.getElementById("t_newTitle");
+const t_companyLabel = document.getElementById("t_companyLabel");
+const t_roleLabel = document.getElementById("t_roleLabel");
+const t_linkLabel = document.getElementById("t_linkLabel");
+const t_deadlineLabel = document.getElementById("t_deadlineLabel");
+const t_addBtn = document.getElementById("t_addBtn");
+const t_appsTitle = document.getElementById("t_appsTitle");
+const t_footer = document.getElementById("t_footer");
+const t_lockedHint = document.getElementById("t_lockedHint");
+
+// filters
+const t_f_all = document.getElementById("t_f_all");
+const t_f_planned = document.getElementById("t_f_planned");
+const t_f_applied = document.getElementById("t_f_applied");
+const t_f_interview = document.getElementById("t_f_interview");
+const t_f_rejected = document.getElementById("t_f_rejected");
+const t_f_offer = document.getElementById("t_f_offer");
+
+// ======================
 // JWT helpers
-// =====================
+// ======================
 function setToken(token) { localStorage.setItem(TOKEN_KEY, token); }
 function getToken() { return localStorage.getItem(TOKEN_KEY); }
 function clearToken() { localStorage.removeItem(TOKEN_KEY); }
@@ -98,12 +158,12 @@ async function apiFetch(url, options = {}) {
 
   if (res.status === 401) {
     clearToken();
-    setLoggedOutUI(t().sessionExpired);
+    setLoggedOutUI(T().sessionExpired);
   }
   return res;
 }
 
-// For UI only (display email), not security-critical
+// Only for showing email in UI (not security critical)
 function parseJwtEmail(token) {
   try {
     const payload = token.split(".")[1];
@@ -111,214 +171,158 @@ function parseJwtEmail(token) {
     const json = decodeURIComponent(
       atob(base64).split("").map(c => `%${("00"+c.charCodeAt(0).toString(16)).slice(-2)}`).join("")
     );
-    return JSON.parse(json).sub || "User";
+    return JSON.parse(json).sub || "user";
   } catch {
-    return "User";
+    return "user";
   }
 }
 
-// =====================
-// DOM refs (from your HTML)
-// =====================
-const whoamiEl = document.getElementById("whoami");
-const openLoginBtn = document.getElementById("openLoginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
-
-const authModal = document.getElementById("authModal");
-const closeAuthModal = document.getElementById("closeAuthModal");
-const authTitle = document.getElementById("authTitle");
-const authForm = document.getElementById("authForm");
-const authEmail = document.getElementById("authEmail");
-const authPassword = document.getElementById("authPassword");
-const authMsg = document.getElementById("authMsg");
-const authSubmitBtn = document.getElementById("authSubmitBtn");
-const toggleAuthMode = document.getElementById("toggleAuthMode");
-
-const appCard = document.getElementById("appCard");
-const listEl = document.getElementById("list");
-const statsEl = document.getElementById("stats");
-const createForm = document.getElementById("createForm");
-const formMsg = document.getElementById("formMsg");
-
-// Language buttons
-const langNoBtn = document.getElementById("langNoBtn");
-const langEnBtn = document.getElementById("langEnBtn");
-
-// Text nodes in HTML
-const titleEl = document.getElementById("t_title");
-const subtitleEl = document.getElementById("t_subtitle");
-const appsTitleEl = document.getElementById("t_appsTitle");
-const newAppTitleEl = document.getElementById("t_newAppTitle");
-const listTitleEl = document.getElementById("t_listTitle");
-const addBtnEl = document.getElementById("t_addBtn");
-const companyLabelEl = document.getElementById("t_companyLabel");
-const roleLabelEl = document.getElementById("t_roleLabel");
-const linkLabelEl = document.getElementById("t_linkLabel");
-const deadlineLabelEl = document.getElementById("t_deadlineLabel");
-const footerEl = document.getElementById("t_footer");
-
-// Filter buttons
-const filterBtnAll = document.getElementById("t_f_all");
-const filterBtnPlanned = document.getElementById("t_f_planned");
-const filterBtnApplied = document.getElementById("t_f_applied");
-const filterBtnInterview = document.getElementById("t_f_interview");
-const filterBtnRejected = document.getElementById("t_f_rejected");
-const filterBtnOffer = document.getElementById("t_f_offer");
-
-// =====================
-// i18n apply
-// =====================
+// ======================
+// UI: apply language
+// ======================
 function applyI18n() {
-  const L = t();
+  const L = T();
 
-  // header
-  titleEl.textContent = L.title;
-  subtitleEl.textContent = L.subtitle;
+  t_title.textContent = L.title;
+  t_subtitle.textContent = L.subtitle;
 
-  // buttons
-  openLoginBtn.textContent = L.login;
+  loginBtn.textContent = L.login;
   logoutBtn.textContent = L.logout;
 
-  // app headings
-  appsTitleEl.textContent = L.appsTitle;
-  newAppTitleEl.textContent = L.newAppTitle;
-  listTitleEl.textContent = L.listTitle;
-  addBtnEl.textContent = L.add;
-  companyLabelEl.textContent = L.company;
-  roleLabelEl.textContent = L.role;
-  linkLabelEl.textContent = L.link;
-  deadlineLabelEl.textContent = L.deadline;
-  footerEl.textContent = L.footer;
+  t_newTitle.textContent = L.newTitle;
+  t_companyLabel.textContent = L.companyLabel;
+  t_roleLabel.textContent = L.roleLabel;
+  t_linkLabel.textContent = L.linkLabel;
+  t_deadlineLabel.textContent = L.deadlineLabel;
+  t_addBtn.textContent = L.addBtn;
 
-  // filters
-  filterBtnAll.textContent = L.filters.ALL;
-  filterBtnPlanned.textContent = L.filters.PLANLAGT;
-  filterBtnApplied.textContent = L.filters.SOKT;
-  filterBtnInterview.textContent = L.filters.INTERVJU;
-  filterBtnRejected.textContent = L.filters.AVSLATT;
-  filterBtnOffer.textContent = L.filters.TILBUD;
+  companyInput.placeholder = L.companyPh;
+  roleInput.placeholder = L.rolePh;
+  linkInput.placeholder = L.linkPh;
+
+  t_appsTitle.textContent = L.appsTitle;
+
+  t_f_all.textContent = L.filters.ALL;
+  t_f_planned.textContent = L.filters.PLANLAGT;
+  t_f_applied.textContent = L.filters.SOKT;
+  t_f_interview.textContent = L.filters.INTERVJU;
+  t_f_rejected.textContent = L.filters.AVSLATT;
+  t_f_offer.textContent = L.filters.TILBUD;
+
+  t_footer.textContent = L.footer;
+  t_lockedHint.textContent = L.lockedHint;
 
   // modal
-  authTitle.textContent = authMode === "login" ? L.login : L.register;
-  authSubmitBtn.textContent = authMode === "login" ? L.login : L.register;
-  toggleAuthMode.textContent = authMode === "login" ? L.register : L.haveUser;
-  authEmail.placeholder = L.emailPh;
-  authPassword.placeholder = authMode === "login" ? L.passLoginPh : L.passRegPh;
+  authTitleEl.textContent = authMode === "login" ? L.login : L.createUser;
+  authSubmitBtn.textContent = authMode === "login" ? L.login : L.createUser;
+  toggleAuthModeBtn.textContent = authMode === "login" ? L.createUser : L.haveUser;
+  authEmail.placeholder = L.email;
+  authPassword.placeholder = L.password;
 
-  // lang button active
-  const lang = getLang();
-  langNoBtn.classList.toggle("active", lang === "no");
-  langEnBtn.classList.toggle("active", lang === "en");
+  render(lastApps);
 }
 
-// =====================
+// ======================
 // Modal open/close
-// =====================
+// ======================
 function openModal() {
   authMsg.textContent = "";
   authModal.classList.remove("hidden");
-  authModal.setAttribute("aria-hidden", "false");
+  authModal.setAttribute("aria-hidden","false");
   setTimeout(() => authEmail.focus(), 0);
 }
 function closeModal() {
   authModal.classList.add("hidden");
-  authModal.setAttribute("aria-hidden", "true");
+  authModal.setAttribute("aria-hidden","true");
 }
 
-openLoginBtn.addEventListener("click", openModal);
-closeAuthModal.addEventListener("click", closeModal);
-authModal.addEventListener("click", (e) => {
-  if (e.target === authModal) closeModal();
-});
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !authModal.classList.contains("hidden")) closeModal();
-});
+loginBtn.addEventListener("click", openModal);
+closeModalBtn.addEventListener("click", closeModal);
+authModal.addEventListener("click", (e) => { if (e.target === authModal) closeModal(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !authModal.classList.contains("hidden")) closeModal(); });
 
-// =====================
-// Auth mode toggle
-// =====================
-toggleAuthMode.addEventListener("click", () => {
+// Switch mode login/register
+toggleAuthModeBtn.addEventListener("click", () => {
   authMode = authMode === "login" ? "register" : "login";
   authMsg.textContent = "";
   applyI18n();
 });
 
-// =====================
-// Auth submit
-// =====================
+// Submit auth
 authForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   authMsg.textContent = "";
+  const L = T();
 
   const email = (authEmail.value || "").trim().toLowerCase();
   const password = authPassword.value || "";
 
-  if (!email || !password || password.length < 6) {
-    authMsg.textContent = t().invalidAuth;
+  if (!email || password.length < 6) {
+    authMsg.textContent = L.invalidAuth;
     return;
   }
 
   const endpoint = authMode === "login" ? "/api/auth/login" : "/api/auth/register";
   const res = await fetch(endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type":"application/json"},
     body: JSON.stringify({ email, password })
   });
 
   if (!res.ok) {
     const text = await res.text();
-    authMsg.textContent = text || t().authFailed;
+    authMsg.textContent = text || L.authFailed;
     return;
   }
 
-  const data = await res.json(); // { token: "..." }
+  const data = await res.json(); // { token }
   setToken(data.token);
+
   closeModal();
   setLoggedInUI();
   await load();
 });
 
-// =====================
 // Logout
-// =====================
 logoutBtn.addEventListener("click", () => {
   clearToken();
   setLoggedOutUI("");
+  // keep same UI, but locked
+  lastApps = [];
+  render(lastApps);
 });
 
-// =====================
-// Language switch
-// =====================
-langNoBtn.addEventListener("click", () => {
-  setLang("no");
+// Language toggle (NO/EN button)
+langBtn.addEventListener("click", () => {
+  const next = getLang() === "no" ? "en" : "no";
+  setLang(next);
   applyI18n();
-  renderLast(); // refresh labels in list
 });
 
-langEnBtn.addEventListener("click", () => {
-  setLang("en");
-  applyI18n();
-  renderLast();
-});
-
-// =====================
+// ======================
 // Filters
-// =====================
+// ======================
 document.querySelectorAll(".filter").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".filter").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     currentFilter = btn.dataset.filter;
-    load();
+    render(lastApps);
   });
 });
 
-// =====================
-// Create form
-// =====================
+// ======================
+// Create application
+// ======================
 createForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   formMsg.textContent = "";
+
+  if (!getToken()) {
+    formMsg.textContent = T().lockedHint;
+    openModal();
+    return;
+  }
 
   const data = new FormData(createForm);
   const payload = {
@@ -330,7 +334,7 @@ createForm.addEventListener("submit", async (e) => {
 
   const res = await apiFetch("/api/apps", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {"Content-Type":"application/json"},
     body: JSON.stringify(payload)
   });
 
@@ -344,9 +348,13 @@ createForm.addEventListener("submit", async (e) => {
   await load();
 });
 
-// =====================
-// App render logic (your existing UI)
-// =====================
+// ======================
+// Render list
+// ======================
+function badgeLabel(status) {
+  return T().badge[status] ?? status;
+}
+
 function fmtDate(d) {
   return d ? d : "—";
 }
@@ -359,22 +367,6 @@ function isOverdue(deadline, status) {
   return dd < new Date(today.getFullYear(), today.getMonth(), today.getDate());
 }
 
-async function updateStatus(id, status) {
-  const res = await apiFetch(`/api/apps/${id}/status`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ status })
-  });
-  if (!res.ok) return;
-  await load();
-}
-
-async function removeItem(id) {
-  const res = await apiFetch(`/api/apps/${id}`, { method: "DELETE" });
-  if (!res.ok && res.status !== 204) return;
-  await load();
-}
-
 function escapeHtml(str) {
   return (str ?? "")
     .replaceAll("&","&amp;")
@@ -383,27 +375,47 @@ function escapeHtml(str) {
     .replaceAll('"',"&quot;");
 }
 
-let lastApps = [];
-function renderLast() {
-  if (getToken() && Array.isArray(lastApps)) render(lastApps);
+async function updateStatus(id, status) {
+  if (!getToken()) return;
+
+  const res = await apiFetch(`/api/apps/${id}/status`, {
+    method: "PUT",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ status })
+  });
+
+  if (res.ok) await load();
+}
+
+async function removeItem(id) {
+  if (!getToken()) return;
+
+  const res = await apiFetch(`/api/apps/${id}`, { method: "DELETE" });
+  if (res.ok || res.status === 204) await load();
 }
 
 function render(apps) {
-  lastApps = apps;
-  const L = t();
+  const L = T();
 
-  const filtered = currentFilter === "ALL"
-    ? apps
-    : apps.filter(a => a.status === currentFilter);
-
-  const counts = apps.reduce((acc, a) => {
+  // stats
+  const counts = (apps || []).reduce((acc, a) => {
     acc[a.status] = (acc[a.status] || 0) + 1;
     return acc;
   }, {});
   statsEl.textContent = L.stats(counts);
 
-  if (filtered.length === 0) {
+  // filter
+  const filtered = currentFilter === "ALL"
+    ? (apps || [])
+    : (apps || []).filter(a => a.status === currentFilter);
+
+  if (!getToken() && filtered.length === 0) {
     listEl.innerHTML = `<div class="muted">${L.noResults}</div>`;
+    return;
+  }
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = `<div class="muted">${getLang()==="no" ? "Ingen treff." : "No results."}</div>`;
     return;
   }
 
@@ -416,26 +428,26 @@ function render(apps) {
       ? `<a href="${a.link}" target="_blank" rel="noreferrer">Link</a>`
       : `<span class="muted">${L.noLink}</span>`;
 
-    const statusLabel = L.badge[a.status] ?? a.status;
+    const statusText = badgeLabel(a.status);
 
     el.innerHTML = `
       <div class="top">
         <div>
           <div class="title">${escapeHtml(a.company)} — ${escapeHtml(a.role)}</div>
           <div class="meta">
-            <span>${getLang()==="no" ? "Frist" : "Deadline"}: <span class="badge">${fmtDate(a.deadline)}</span></span>
-            <span>${getLang()==="no" ? "Status" : "Status"}: <span class="badge">${statusLabel}</span></span>
+            <span>${L.deadlineTxt}: <span class="badge">${fmtDate(a.deadline)}</span></span>
+            <span>${L.statusTxt}: <span class="badge">${statusText}</span></span>
             <span>${link}</span>
           </div>
         </div>
+
         <div class="actions">
-          <select data-id="${a.id}" class="statusSelect">
-            ${["PLANLAGT","SOKT","INTERVJU","AVSLATT","TILBUD"].map(s => {
-              const label = L.badge[s] ?? s;
-              return `<option value="${s}" ${s===a.status ? "selected" : ""}>${label}</option>`;
-            }).join("")}
+          <select data-id="${a.id}" class="statusSelect" ${getToken() ? "" : "disabled"}>
+            ${["PLANLAGT","SOKT","INTERVJU","AVSLATT","TILBUD"].map(s =>
+              `<option value="${s}" ${s===a.status ? "selected" : ""}>${badgeLabel(s)}</option>`
+            ).join("")}
           </select>
-          <button data-del="${a.id}">${L.delete}</button>
+          <button class="btn ghost smallDel" data-del="${a.id}" ${getToken() ? "" : "disabled"}>${L.delete}</button>
         </div>
       </div>
     `;
@@ -446,54 +458,61 @@ function render(apps) {
   document.querySelectorAll(".statusSelect").forEach(sel => {
     sel.addEventListener("change", (e) => updateStatus(e.target.dataset.id, e.target.value));
   });
+
   document.querySelectorAll("button[data-del]").forEach(btn => {
     btn.addEventListener("click", () => removeItem(btn.dataset.del));
   });
 }
 
+// ======================
+// Load apps
+// ======================
 async function load() {
-  if (!getToken()) return;
+  if (!getToken()) {
+    lastApps = [];
+    render(lastApps);
+    return;
+  }
 
   const res = await apiFetch("/api/apps");
   if (!res.ok) return;
 
-  const apps = await res.json();
-  render(apps);
+  lastApps = await res.json();
+  render(lastApps);
 }
 
-// =====================
-// UI State
-// =====================
+// ======================
+// Logged in/out UI
+// ======================
 function setLoggedInUI() {
   const email = parseJwtEmail(getToken());
   whoamiEl.textContent = email;
   whoamiEl.classList.remove("hidden");
 
-  openLoginBtn.classList.add("hidden");
+  loginBtn.classList.add("hidden");
   logoutBtn.classList.remove("hidden");
 
-  appCard.classList.remove("hidden");
+  lockedHint.classList.add("hidden");
+  document.body.classList.remove("locked");
 }
 
 function setLoggedOutUI(message) {
   whoamiEl.textContent = "";
   whoamiEl.classList.add("hidden");
 
-  openLoginBtn.classList.remove("hidden");
+  loginBtn.classList.remove("hidden");
   logoutBtn.classList.add("hidden");
 
-  appCard.classList.add("hidden");
+  lockedHint.classList.remove("hidden");
+  document.body.classList.add("locked");
 
-  if (message) {
-    // show message inside modal if open, otherwise open modal with message
-    authMsg.textContent = message;
-  }
+  if (message) authMsg.textContent = message;
 }
 
-// =====================
+// ======================
 // Init
-// =====================
-(function init() {
+// ======================
+(function init(){
   if (!localStorage.getItem(LANG_KEY)) setLang("no");
   applyI18n();
 
@@ -502,5 +521,6 @@ function setLoggedOutUI(message) {
     load();
   } else {
     setLoggedOutUI("");
+    render([]);
   }
 })();

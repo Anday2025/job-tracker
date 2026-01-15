@@ -18,29 +18,33 @@ import java.util.Optional;
 public class JobApplicationService {
 
     private final JobApplicationRepository repo;
-    private final UserRepository userRepo;
+    private final UserRepository userRepository;
 
-    public JobApplicationService(JobApplicationRepository repo, UserRepository userRepo) {
+    public JobApplicationService(JobApplicationRepository repo, UserRepository userRepository) {
         this.repo = repo;
-        this.userRepo = userRepo;
+        this.userRepository = userRepository;
     }
 
+    // Henter innlogget e-post (fra cookie/JWT via Spring Security)
     private String currentEmail() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) return null;
-        return auth.getName(); // ✅ dette blir email når JwtAuthFilter setter auth
+        return auth.getName(); // auth.getName() = email
     }
 
-    private User currentUser() {
+    private User currentUserOrThrow() {
         String email = currentEmail();
-        if (email == null) throw new RuntimeException("Unauthorized");
-        return userRepo.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found: " + email));
+        if (email == null || email.isBlank()) {
+            throw new RuntimeException("Unauthorized");
+        }
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     public List<JobApplication> list() {
-        User u = currentUser();
-        return repo.findAllByUser(u).stream()
+        User me = currentUserOrThrow();
+
+        return repo.findAllByUser(me).stream()
                 .sorted(Comparator.comparing(
                         JobApplication::getDeadline,
                         Comparator.nullsLast(Comparator.naturalOrder())
@@ -49,23 +53,25 @@ public class JobApplicationService {
     }
 
     public JobApplication create(String company, String role, String link, LocalDate deadline) {
-        User u = currentUser();
+        User me = currentUserOrThrow();
 
         JobApplication app = new JobApplication();
-        app.setUser(u); // ✅ VIKTIG
         app.setCompany(company);
         app.setRole(role);
         app.setLink(link);
         app.setDeadline(deadline);
         app.setStatus(Status.PLANLAGT);
 
+        // ✅ HER binder vi riktig owner
+        app.setUser(me);
+
         return repo.save(app);
     }
 
     public Optional<JobApplication> updateStatus(long id, Status status) {
-        User u = currentUser();
+        User me = currentUserOrThrow();
 
-        Optional<JobApplication> found = repo.findByIdAndUser(id, u);
+        Optional<JobApplication> found = repo.findByIdAndUser(id, me);
         if (found.isEmpty()) return Optional.empty();
 
         JobApplication app = found.get();
@@ -74,9 +80,9 @@ public class JobApplicationService {
     }
 
     public boolean delete(long id) {
-        User u = currentUser();
+        User me = currentUserOrThrow();
 
-        Optional<JobApplication> found = repo.findByIdAndUser(id, u);
+        Optional<JobApplication> found = repo.findByIdAndUser(id, me);
         if (found.isEmpty()) return false;
 
         repo.delete(found.get());

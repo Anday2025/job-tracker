@@ -18,74 +18,53 @@ import java.util.Optional;
 public class JobApplicationService {
 
     private final JobApplicationRepository repo;
-    private final UserRepository userRepository;
+    private final UserRepository userRepo;
 
-    public JobApplicationService(JobApplicationRepository repo, UserRepository userRepository) {
+    public JobApplicationService(JobApplicationRepository repo, UserRepository userRepo) {
         this.repo = repo;
-        this.userRepository = userRepository;
+        this.userRepo = userRepo;
     }
 
-    // Henter innlogget e-post (fra cookie/JWT via Spring Security)
-    private String currentEmail() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || !auth.isAuthenticated()) return null;
-        return auth.getName(); // auth.getName() = email
-    }
+    private User currentUser() {
+        String email = SecurityContextHolder
+                .getContext()
+                .getAuthentication()
+                .getName();
 
-    private User currentUserOrThrow() {
-        String email = currentEmail();
-        if (email == null || email.isBlank()) {
-            throw new RuntimeException("Unauthorized");
-        }
-        return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        return userRepo.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Bruker ikke funnet"));
     }
 
     public List<JobApplication> list() {
-        User me = currentUserOrThrow();
-
-        return repo.findAllByUser(me).stream()
-                .sorted(Comparator.comparing(
-                        JobApplication::getDeadline,
-                        Comparator.nullsLast(Comparator.naturalOrder())
-                ))
-                .toList();
+        return repo.findAllByUser(currentUser());
     }
 
     public JobApplication create(String company, String role, String link, LocalDate deadline) {
-        User me = currentUserOrThrow();
-
         JobApplication app = new JobApplication();
         app.setCompany(company);
         app.setRole(role);
         app.setLink(link);
         app.setDeadline(deadline);
         app.setStatus(Status.PLANLAGT);
-
-        // ✅ HER binder vi riktig owner
-        app.setUser(me);
+        app.setUser(currentUser()); // ⭐ VIKTIG
 
         return repo.save(app);
     }
 
     public Optional<JobApplication> updateStatus(long id, Status status) {
-        User me = currentUserOrThrow();
-
-        Optional<JobApplication> found = repo.findByIdAndUser(id, me);
-        if (found.isEmpty()) return Optional.empty();
-
-        JobApplication app = found.get();
-        app.setStatus(status);
-        return Optional.of(repo.save(app));
+        return repo.findByIdAndUser(id, currentUser())
+                .map(app -> {
+                    app.setStatus(status);
+                    return repo.save(app);
+                });
     }
 
     public boolean delete(long id) {
-        User me = currentUserOrThrow();
-
-        Optional<JobApplication> found = repo.findByIdAndUser(id, me);
-        if (found.isEmpty()) return false;
-
-        repo.delete(found.get());
-        return true;
+        return repo.findByIdAndUser(id, currentUser())
+                .map(app -> {
+                    repo.delete(app);
+                    return true;
+                })
+                .orElse(false);
     }
 }

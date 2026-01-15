@@ -1,12 +1,19 @@
 /* =========================
-   Jobbsøker-tracker (B1 cookie auth)
-   - Auth via HttpOnly SESSION cookie
-   - All fetch uses credentials: "include"
+   Jobbsøker-tracker (B1: HttpOnly SESSION cookie on HTTPS Render)
+   Backend routes (matches your controller):
+   - GET    /api/apps
+   - POST   /api/apps
+   - PUT    /api/apps/{id}/status
+   - DELETE /api/apps/{id}
+   Auth routes:
+   - POST /api/auth/register
+   - POST /api/auth/login   (sets HttpOnly cookie SESSION)
+   - GET  /api/auth/me
+   - POST /api/auth/logout  (clears cookie)
    ========================= */
 
-const API = ""; // samme origin (Render). Hvis du senere bruker annen backend: sett f.eks. "https://..."
+const API = ""; // same origin on Render
 
-/* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
 
 function setMsg(el, text, ok = false) {
@@ -17,12 +24,13 @@ function setMsg(el, text, ok = false) {
 
 async function apiFetch(path, options = {}) {
   const res = await fetch(API + path, {
-    credentials: "include", // 👈 VIKTIG for cookie
+    method: options.method || "GET",
+    credentials: "include", // 👈 REQUIRED for HttpOnly cookie
     headers: {
-      "Content-Type": "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {}),
     },
-    ...options,
+    body: options.body,
   });
 
   const ct = res.headers.get("content-type") || "";
@@ -30,24 +38,24 @@ async function apiFetch(path, options = {}) {
   const data = isJson ? await res.json().catch(() => null) : await res.text().catch(() => "");
 
   if (!res.ok) {
-    const errText =
+    const msg =
       (typeof data === "string" && data) ||
       (data && (data.message || data.error)) ||
       `${res.status} ${res.statusText}`;
-    const e = new Error(errText);
-    e.status = res.status;
-    e.data = data;
-    throw e;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.data = data;
+    throw err;
   }
   return data;
 }
 
+/* ---------- modal ---------- */
 function openModal() {
   $("authModal").classList.remove("hidden");
   document.body.classList.add("modalOpen");
   $("authEmail")?.focus();
 }
-
 function closeModal() {
   $("authModal").classList.add("hidden");
   document.body.classList.remove("modalOpen");
@@ -79,7 +87,8 @@ const dict = {
     emptyLogin: "Ingen treff. Logg inn for å se dine søknader.",
     loginHint: "Logg inn for å lagre og se dine søknader.",
     built: "Bygget med Java (Spring Boot) + vanilla JS + JWT.",
-    unauthorized: "Unauthorized",
+    added: "Lagt til.",
+    mustLogin: "Du må logge inn først.",
   },
   EN: {
     title: "Job tracker",
@@ -105,27 +114,31 @@ const dict = {
     emptyLogin: "No results. Sign in to see your applications.",
     loginHint: "Sign in to save and see your applications.",
     built: "Built with Java (Spring Boot) + vanilla JS + JWT.",
-    unauthorized: "Unauthorized",
+    added: "Added.",
+    mustLogin: "You must sign in first.",
   },
 };
 
 let LANG = localStorage.getItem("lang") || "NO";
+let authMode = "login"; // login | register
+let currentEmail = null;
+let apps = [];
+let activeFilter = "ALL";
+
 function t(key) {
   return (dict[LANG] && dict[LANG][key]) || key;
 }
+
 function applyLang() {
   document.documentElement.lang = LANG === "NO" ? "no" : "en";
 
-  // header texts
   $("t_title").textContent = t("title");
   $("t_subtitle").textContent = t("subtitle");
 
-  // buttons
   $("loginBtn").textContent = t("login");
   $("logoutBtn").textContent = t("logout");
-  $("langBtn").textContent = LANG === "NO" ? "EN" : "NO"; // toggle label
+  $("langBtn").textContent = LANG === "NO" ? "EN" : "NO";
 
-  // left card
   $("t_newAppTitle").textContent = t("newApp");
   $("t_companyLabel").textContent = t("company");
   $("t_roleLabel").textContent = t("role");
@@ -134,12 +147,6 @@ function applyLang() {
   $("t_addBtn").textContent = t("add");
   $("t_loginHint").textContent = t("loginHint");
 
-  // placeholders
-  $("t_companyPh").placeholder = LANG === "NO" ? "F.eks. NAV / Telenor" : "e.g. NAV / Telenor";
-  $("t_rolePh").placeholder = LANG === "NO" ? "F.eks. Junior utvikler" : "e.g. Junior developer";
-  $("t_linkPh").placeholder = "https://...";
-
-  // right card
   $("t_appsTitle").textContent = t("apps");
   $("t_f_all").textContent = t("all");
   $("t_f_planned").textContent = t("planned");
@@ -147,28 +154,23 @@ function applyLang() {
   $("t_f_interview").textContent = t("interview");
   $("t_f_rejected").textContent = t("rejected");
   $("t_f_offer").textContent = t("offer");
-  $("t_emptyLogin").textContent = t("emptyLogin");
 
-  // footer
   $("t_footer").textContent = t("built");
 
-  // modal
   $("authTitle").textContent = authMode === "login" ? t("login") : t("register");
   $("authEmail").placeholder = t("email");
   $("authPassword").placeholder = t("password");
   $("authSubmitBtn").textContent = authMode === "login" ? t("login") : t("register");
   $("toggleAuthMode").textContent = authMode === "login" ? t("register") : t("login");
+
+  // refresh list empty text
+  renderList();
+  renderStats();
 }
 
-/* ---------- state ---------- */
-let currentUserEmail = null;
-let apps = [];
-let activeFilter = "ALL";
-let authMode = "login"; // "login" | "register"
-
-/* ---------- auth UI ---------- */
+/* ---------- auth state ---------- */
 function setLoggedIn(email) {
-  currentUserEmail = email;
+  currentEmail = email;
 
   $("whoami").textContent = email || "—";
   $("whoami").classList.toggle("hidden", !email);
@@ -176,57 +178,41 @@ function setLoggedIn(email) {
   $("logoutBtn").classList.toggle("hidden", !email);
   $("loginBtn").classList.toggle("hidden", !!email);
 
-  // hint i venstre
   $("t_loginHint").classList.toggle("hidden", !!email);
 
-  // i listen (høyre)
-  $("t_emptyLogin").textContent = email ? (LANG === "NO" ? "Ingen treff." : "No results.") : t("emptyLogin");
+  if (!email) {
+    apps = [];
+  }
+  renderList();
+  renderStats();
 }
 
 async function refreshMe() {
   try {
-    const me = await apiFetch("/api/auth/me", { method: "GET" });
+    const me = await apiFetch("/api/auth/me");
     setLoggedIn(me.email);
-    await loadApps(); // henter brukerens apps
-  } catch (e) {
-    // ikke innlogget
+    await loadApps();
+  } catch {
     setLoggedIn(null);
-    apps = [];
-    renderList();
-    renderStats();
   }
 }
 
 /* ---------- apps ---------- */
 function normalizeStatus(s) {
-  // backend bruker kanskje PLANLAGT/SOKT/INTERVJU/AVSLATT/TILBUD
   return (s || "PLANLAGT").toUpperCase();
 }
 
 function statusLabel(s) {
   const st = normalizeStatus(s);
   if (LANG === "EN") {
-    return {
-      PLANLAGT: "Planned",
-      SOKT: "Applied",
-      INTERVJU: "Interview",
-      AVSLATT: "Rejected",
-      TILBUD: "Offer",
-    }[st] || st;
+    return { PLANLAGT: "Planned", SOKT: "Applied", INTERVJU: "Interview", AVSLATT: "Rejected", TILBUD: "Offer" }[st] || st;
   }
-  return {
-    PLANLAGT: "Planlagt",
-    SOKT: "Søkt",
-    INTERVJU: "Intervju",
-    AVSLATT: "Avslått",
-    TILBUD: "Tilbud",
-  }[st] || st;
+  return { PLANLAGT: "Planlagt", SOKT: "Søkt", INTERVJU: "Intervju", AVSLATT: "Avslått", TILBUD: "Tilbud" }[st] || st;
 }
 
 function fmtDate(iso) {
   if (!iso) return "—";
   try {
-    // iso kan være "2026-01-18"
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
     return d.toISOString().slice(0, 10);
@@ -246,11 +232,19 @@ function renderStats() {
     const st = normalizeStatus(a.status);
     if (counts[st] !== undefined) counts[st]++;
   }
-  const txt =
+  $("stats").textContent =
     LANG === "NO"
       ? `Planlagt: ${counts.PLANLAGT} • Søkt: ${counts.SOKT} • Intervju: ${counts.INTERVJU} • Tilbud: ${counts.TILBUD} • Avslått: ${counts.AVSLATT}`
       : `Planned: ${counts.PLANLAGT} • Applied: ${counts.SOKT} • Interview: ${counts.INTERVJU} • Offer: ${counts.TILBUD} • Rejected: ${counts.AVSLATT}`;
-  $("stats").textContent = txt;
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function itemHtml(a) {
@@ -268,9 +262,11 @@ function itemHtml(a) {
         </div>
         <div class="actions">
           <select class="statusSelect">
-            ${["PLANLAGT","SOKT","INTERVJU","AVSLATT","TILBUD"].map(st => `
-              <option value="${st}" ${normalizeStatus(a.status)===st ? "selected" : ""}>${statusLabel(st)}</option>
-            `).join("")}
+            ${["PLANLAGT", "SOKT", "INTERVJU", "AVSLATT", "TILBUD"]
+              .map(
+                (st) => `<option value="${st}" ${normalizeStatus(a.status) === st ? "selected" : ""}>${statusLabel(st)}</option>`
+              )
+              .join("")}
           </select>
           <button class="btn ghost deleteBtn" type="button">${LANG === "NO" ? "Slett" : "Delete"}</button>
         </div>
@@ -281,13 +277,14 @@ function itemHtml(a) {
 
 function renderList() {
   const list = $("list");
-  const data = filteredApps();
+  if (!list) return;
 
-  if (!currentUserEmail) {
-    list.innerHTML = `<div class="muted" id="t_emptyLogin">${t("emptyLogin")}</div>`;
+  if (!currentEmail) {
+    list.innerHTML = `<div class="muted">${t("emptyLogin")}</div>`;
     return;
   }
 
+  const data = filteredApps();
   if (!data.length) {
     list.innerHTML = `<div class="muted">${LANG === "NO" ? "Ingen treff." : "No results."}</div>`;
     return;
@@ -295,88 +292,45 @@ function renderList() {
 
   list.innerHTML = data.map(itemHtml).join("");
 
-  // wire events
   list.querySelectorAll(".deleteBtn").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
-      const card = e.target.closest(".item");
-      const id = card?.dataset?.id;
+      const id = e.target.closest(".item")?.dataset?.id;
       if (!id) return;
-      await deleteApp(id);
+      try {
+        await apiFetch(`/api/apps/${id}`, { method: "DELETE" });
+        await loadApps();
+      } catch (err) {
+        setMsg($("formMsg"), err.message);
+      }
     });
   });
 
   list.querySelectorAll(".statusSelect").forEach((sel) => {
     sel.addEventListener("change", async (e) => {
-      const card = e.target.closest(".item");
-      const id = card?.dataset?.id;
+      const id = e.target.closest(".item")?.dataset?.id;
       const status = e.target.value;
       if (!id) return;
-      await updateStatus(id, status);
+      try {
+        await apiFetch(`/api/apps/${id}/status`, {
+          method: "PUT",
+          body: JSON.stringify({ status }),
+        });
+        await loadApps();
+      } catch (err) {
+        setMsg($("formMsg"), err.message);
+      }
     });
   });
 }
 
 async function loadApps() {
-  if (!currentUserEmail) return;
-  try {
-    apps = await apiFetch("/api/apps", { method: "GET" });
-    renderStats();
-    renderList();
-  } catch (e) {
-    // hvis cookie ikke sendes -> Unauthorized
-    renderStats();
-    renderList();
-    throw e;
-  }
+  if (!currentEmail) return;
+  apps = await apiFetch("/api/apps");
+  renderStats();
+  renderList();
 }
 
-async function createApp(payload) {
-  const created = await apiFetch("/api/apps", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-  // backend kan returnere created entity eller bare ok
-  await loadApps();
-  return created;
-}
-
-async function updateStatus(id, status) {
-  // Tilpass til din backend: enten PUT /api/apps/{id}/status eller PUT /api/apps/{id}
-  // Jeg prøver først /status, hvis 404/405 -> fallback
-  try {
-    await apiFetch(`/api/apps/${id}/status`, {
-      method: "PUT",
-      body: JSON.stringify({ status }),
-    });
-  } catch (e) {
-    if (e.status === 404 || e.status === 405) {
-      await apiFetch(`/api/apps/${id}`, {
-        method: "PUT",
-        body: JSON.stringify({ status }),
-      });
-    } else {
-      throw e;
-    }
-  }
-  await loadApps();
-}
-
-async function deleteApp(id) {
-  await apiFetch(`/api/apps/${id}`, { method: "DELETE" });
-  await loadApps();
-}
-
-/* ---------- escape ---------- */
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-/* ---------- events ---------- */
+/* ---------- event wiring ---------- */
 $("loginBtn").addEventListener("click", () => {
   authMode = "login";
   applyLang();
@@ -390,9 +344,6 @@ $("logoutBtn").addEventListener("click", async () => {
     await apiFetch("/api/auth/logout", { method: "POST" });
   } finally {
     setLoggedIn(null);
-    apps = [];
-    renderList();
-    renderStats();
   }
 });
 
@@ -400,8 +351,6 @@ $("langBtn").addEventListener("click", () => {
   LANG = LANG === "NO" ? "EN" : "NO";
   localStorage.setItem("lang", LANG);
   applyLang();
-  renderStats();
-  renderList();
 });
 
 $("closeAuth").addEventListener("click", closeModal);
@@ -420,6 +369,7 @@ $("toggleAuthMode").addEventListener("click", () => {
 
 $("authForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const email = $("authEmail").value.trim();
   const password = $("authPassword").value;
 
@@ -435,15 +385,12 @@ $("authForm").addEventListener("submit", async (e) => {
       return;
     }
 
-    // login
     await apiFetch("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
 
-    // VIKTIG: etter login, kjør /me (cookie må være satt)
     await refreshMe();
-    setMsg($("authMsg"), "", true);
     closeModal();
   } catch (err) {
     setMsg($("authMsg"), (LANG === "NO" ? "Innlogging feilet: " : "Login failed: ") + err.message);
@@ -452,11 +399,12 @@ $("authForm").addEventListener("submit", async (e) => {
 
 $("createForm").addEventListener("submit", async (e) => {
   e.preventDefault();
+
   const msg = $("formMsg");
   setMsg(msg, "");
 
-  if (!currentUserEmail) {
-    setMsg(msg, LANG === "NO" ? "Du må logge inn først." : "You must sign in first.");
+  if (!currentEmail) {
+    setMsg(msg, t("mustLogin"));
     openModal();
     return;
   }
@@ -466,20 +414,22 @@ $("createForm").addEventListener("submit", async (e) => {
     company: (fd.get("company") || "").toString().trim(),
     role: (fd.get("role") || "").toString().trim(),
     link: (fd.get("link") || "").toString().trim(),
-    deadline: (fd.get("deadline") || "").toString().trim() || null,
+    deadline: (fd.get("deadline") || "").toString().trim() || null, // backend parser LocalDate
   };
 
   try {
-    await createApp(payload);
+    await apiFetch("/api/apps", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
     e.target.reset();
-    setMsg(msg, LANG === "NO" ? "Lagt til." : "Added.", true);
+    setMsg(msg, t("added"), true);
+    await loadApps();
   } catch (err) {
-    // Hvis du fortsatt får Unauthorized her: cookie sendes ikke => credentials / SameSite / Secure / origin
-    if (err.status === 401) {
-      setMsg(msg, (LANG === "NO" ? "Unauthorized – cookies ble ikke sendt. " : "Unauthorized – cookies not sent. ") + err.message);
-    } else {
-      setMsg(msg, err.message);
-    }
+    // This is your current issue:
+    // If 401 here, cookie was not included => credentials/include or cookie flags
+    setMsg(msg, err.message || "Error");
   }
 });
 

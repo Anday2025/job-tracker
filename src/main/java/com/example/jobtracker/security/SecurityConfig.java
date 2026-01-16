@@ -36,7 +36,7 @@ public class SecurityConfig {
                 .cors(cors -> {})
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                .anonymous(a -> a.disable()) // ✅ VIKTIG
+                //.anonymous(a -> a.disable()) // ✅ VIKTIG
 
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(

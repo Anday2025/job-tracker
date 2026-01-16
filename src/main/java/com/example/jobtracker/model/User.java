@@ -22,6 +22,13 @@ public class User {
         this.passwordHash = passwordHash;
     }
 
+    @Column(nullable = false)
+    private boolean enabled = false;
+
+    public boolean isEnabled() { return enabled; }
+    public void setEnabled(boolean enabled) { this.enabled = enabled; }
+
+
     public Long getId() { return id; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }

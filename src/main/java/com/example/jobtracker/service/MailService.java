@@ -1,5 +1,6 @@
 package com.example.jobtracker.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -9,6 +10,9 @@ public class MailService {
 
     private final JavaMailSender mailSender;
 
+    @Value("${MAIL_FROM:}")
+    private String from;
+
     public MailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
@@ -17,10 +21,19 @@ public class MailService {
         SimpleMailMessage msg = new SimpleMailMessage();
         msg.setTo(to);
         msg.setSubject("Bekreft e-post for Jobbsøker-tracker");
-        msg.setText("Hei!\n\nKlikk her for å aktivere brukeren din:\n" + link + "\n\nHilsen Jobbsøker-tracker");
+        msg.setText("""
+                Hei!
 
-        // valgfritt: setFrom, hvis du har verifisert domene (ellers kan sandbox håndtere)
-        // msg.setFrom("Jobbsøker-tracker <postmaster@sandboxXXX.mailgun.org>");
+                Klikk her for å aktivere brukeren din:
+                %s
+
+                Hilsen
+                Jobbsøker-tracker
+                """.formatted(link));
+
+        if (from != null && !from.isBlank()) {
+            msg.setFrom(from);
+        }
 
         mailSender.send(msg);
     }

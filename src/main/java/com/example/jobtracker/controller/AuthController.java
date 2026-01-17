@@ -122,7 +122,19 @@ public class AuthController {
         String verifyUrl = baseUrl + "/api/auth/verify?token=" + token;
 
         // send mail
-        mailService.sendVerificationEmail(u.getEmail(), verifyUrl);
+        //mailService.sendVerificationEmail(u.getEmail(), verifyUrl);
+
+
+
+
+        try {
+            mailService.sendVerificationEmail(u.getEmail(), verifyUrl);
+            System.out.println("MAIL SENT to=" + u.getEmail());
+        } catch (Exception e) {
+            System.out.println("MAIL FAILED: " + e.getMessage());
+            e.printStackTrace();
+        }
+
 
         return ResponseEntity.ok(Map.of(
                 "ok", true,

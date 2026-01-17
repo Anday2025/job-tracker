@@ -10,7 +10,7 @@ public class MailService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${MAIL_FROM:}")
+    @Value("${spring.mail.from:}")
     private String from;
 
     public MailService(JavaMailSender mailSender) {
@@ -31,6 +31,7 @@ public class MailService {
                 Jobbsøker-tracker
                 """.formatted(link));
 
+        // Viktig: Mailgun liker at du setter from eksplisitt
         if (from != null && !from.isBlank()) {
             msg.setFrom(from);
         }

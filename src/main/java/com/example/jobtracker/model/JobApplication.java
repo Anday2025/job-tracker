@@ -27,6 +27,9 @@ public class JobApplication {
     @JsonIgnore
     private User user;
 
+
+
+
     public JobApplication() {}
 
     public Long getId() { return id; }

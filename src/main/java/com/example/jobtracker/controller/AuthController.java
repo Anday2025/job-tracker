@@ -51,6 +51,7 @@ public class AuthController {
     ) {}
 
     // ----------------- PASSWORD VALIDATION -----------------
+    // Minst 8 tegn, minst én stor bokstav, én liten bokstav og ett tall
     private boolean isStrongPassword(String password) {
         if (password == null) return false;
         return password.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$");
@@ -87,9 +88,19 @@ public class AuthController {
         response.addHeader("Set-Cookie", cookie.toString());
     }
 
+    private String getBaseUrl(HttpServletRequest request) {
+        // Render: sett APP_BASE_URL=https://job-tracker-0qv9.onrender.com
+        String baseUrl = System.getenv().getOrDefault("APP_BASE_URL", "").trim();
+        if (!baseUrl.isBlank()) return baseUrl;
+
+        // fallback lokal
+        String scheme = request.isSecure() ? "https" : "http";
+        return scheme + "://" + request.getServerName() + ":" + request.getServerPort();
+    }
+
     // ---------- REGISTER (enabled=false + send verify link) ----------
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody AuthRequest req) {
+    public ResponseEntity<?> register(@RequestBody AuthRequest req, HttpServletRequest request) {
         String email = req.email().toLowerCase().trim();
 
         if (userRepository.existsByEmail(email)) {
@@ -111,30 +122,19 @@ public class AuthController {
         Instant expiresAt = Instant.now().plus(Duration.ofHours(24));
         tokenRepo.save(new VerificationToken(token, u, expiresAt));
 
-        // Base URL for link (Render)
-        // Sett i Render Environment: APP_BASE_URL=https://job-tracker-0qv9.onrender.com
-        String baseUrl = System.getenv().getOrDefault("APP_BASE_URL", "");
-        if (baseUrl.isBlank()) {
-            // fallback (ikke perfekt, men hindrer crash)
-            baseUrl = "http://localhost:8080";
-        }
-
-        String verifyUrl = baseUrl + "/api/auth/verify?token=" + token;
-
-        // send mail
-        //mailService.sendVerificationEmail(u.getEmail(), verifyUrl);
-
-
-
+        String verifyUrl = getBaseUrl(request) + "/api/auth/verify?token=" + token;
 
         try {
             mailService.sendVerificationEmail(u.getEmail(), verifyUrl);
-            System.out.println("MAIL SENT to=" + u.getEmail());
+            System.out.println("[MAIL] OK to=" + u.getEmail() + " verifyUrl=" + verifyUrl);
         } catch (Exception e) {
-            System.out.println("MAIL FAILED: " + e.getMessage());
+            System.out.println("[MAIL] FAILED to=" + u.getEmail() + " error=" + e.getMessage());
             e.printStackTrace();
-        }
 
+            // Viktig: Ikke lat som alt er OK hvis mail ikke gikk ut
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Kunne ikke sende bekreftelsesmail. Sjekk Mailgun/Render environment og prøv igjen.");
+        }
 
         return ResponseEntity.ok(Map.of(
                 "ok", true,

@@ -100,47 +100,58 @@ public class AuthController {
 
     // ---------- REGISTER (enabled=false + send verify link) ----------
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody AuthRequest req, HttpServletRequest request) {
+    public ResponseEntity<?> register(@RequestBody AuthRequest req) {
         String email = req.email().toLowerCase().trim();
 
         if (userRepository.existsByEmail(email)) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("E-post er allerede registrert");
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of("error", "E-post er allerede registrert"));
         }
 
         if (!isStrongPassword(req.password())) {
-            return ResponseEntity.badRequest().body(
-                    "Passordkrav: minst 8 tegn, minst én stor bokstav, én liten bokstav og ett tall"
-            );
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error",
+                            "Passordkrav: minst 8 tegn, stor/liten bokstav og tall"));
         }
 
         User u = new User(email, passwordEncoder.encode(req.password()));
         u.setEnabled(false);
-        userRepository.save(u);
 
-        // token gyldig i 24 timer
         String token = UUID.randomUUID().toString();
         Instant expiresAt = Instant.now().plus(Duration.ofHours(24));
-        tokenRepo.save(new VerificationToken(token, u, expiresAt));
+        VerificationToken vt = new VerificationToken(token, u, expiresAt);
 
-        String verifyUrl = getBaseUrl(request) + "/api/auth/verify?token=" + token;
+        String baseUrl = System.getenv("APP_BASE_URL");
+        if (baseUrl == null || baseUrl.isBlank()) {
+            baseUrl = "http://localhost:8080";
+        }
+        String verifyUrl = baseUrl + "/api/auth/verify?token=" + token;
 
         try {
+            userRepository.save(u);
+            tokenRepo.save(vt);
+
             mailService.sendVerificationEmail(u.getEmail(), verifyUrl);
-            System.out.println("[MAIL] OK to=" + u.getEmail() + " verifyUrl=" + verifyUrl);
+
+            return ResponseEntity.ok(Map.of(
+                    "ok", true,
+                    "message", "Bruker opprettet. Sjekk e-posten din for bekreftelse."
+            ));
+
         } catch (Exception e) {
-            System.out.println("[MAIL] FAILED to=" + u.getEmail() + " error=" + e.getMessage());
+            // 🔥 rollback manuelt
+            tokenRepo.delete(vt);
+            userRepository.delete(u);
+
             e.printStackTrace();
 
-            // Viktig: Ikke lat som alt er OK hvis mail ikke gikk ut
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Kunne ikke sende bekreftelsesmail. Sjekk Mailgun/Render environment og prøv igjen.");
+                    .body(Map.of(
+                            "error", "Kunne ikke sende bekreftelsesmail"
+                    ));
         }
-
-        return ResponseEntity.ok(Map.of(
-                "ok", true,
-                "message", "Bruker opprettet. Sjekk e-posten din for bekreftelseslenke."
-        ));
     }
+
 
     // ---------- VERIFY ----------
     @GetMapping("/verify")

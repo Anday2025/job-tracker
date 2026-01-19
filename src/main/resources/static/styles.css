@@ -193,6 +193,11 @@ input:focus{
 }
 .msg.ok{ color:#a9f5c6; }
 
+.msg:not(:empty){
+  margin-top: 6px;
+}
+
+
 .hint{
   margin-top: 8px;
   padding: 12px 12px;

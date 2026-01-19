@@ -122,34 +122,13 @@ function setMsg(el, text, ok = false) {
   el.classList.toggle("ok", !!ok);
 }
 
-function showAuthError(msg) {
-  const errorEl = document.getElementById("auth-error");
-  if (errorEl) errorEl.textContent = msg || "";
-}
 
-function clearAuthError() {
-  const errorEl = document.getElementById("auth-error");
-  if (errorEl) errorEl.textContent = "";
-}
 
 
 function show(el) { el?.classList.remove("hidden"); }
 function hide(el) { el?.classList.add("hidden"); }
 
-function openModal() {
-  authModal.classList.remove("hidden");
-  document.body.classList.add("modalOpen");
-  setMsg(authMsg, "");
-  clearAuthError();
-  setTimeout(() => authEmail?.focus(), 30);
-}
 
-function closeModal() {
-  authModal.classList.add("hidden");
-  document.body.classList.remove("modalOpen");
-  setMsg(authMsg, "");
-  clearAuthError();
-}
 
 
 function fmtDate(iso) {
@@ -500,7 +479,6 @@ toggleAuthMode?.addEventListener("click", () => {
   state.authMode = state.authMode === "login" ? "register" : "login";
   applyI18n();
   setMsg(authMsg, "");
-  clearAuthError();
 });
 
 
@@ -508,8 +486,6 @@ toggleAuthMode?.addEventListener("click", () => {
 authForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   setMsg(authMsg, "");
-  clearAuthError();
-
 
   const email = authEmail.value.trim().toLowerCase();
   const password = authPassword.value;
@@ -517,21 +493,29 @@ authForm?.addEventListener("submit", async (e) => {
   try {
     if (state.authMode === "register") {
       await doRegister(email, password);
-      setMsg(authMsg, t("ok"), true);
-      // auto-switch til login
+
+      // Ikke vis "OK" - vis en nyttig beskjed
+      setMsg(authMsg, "Bruker opprettet. Sjekk e-posten din for bekreftelseslenke.", true);
+
+      // Bytt til login-mode etter register
       state.authMode = "login";
       applyI18n();
       return;
     }
 
+    // Login
     await doLogin(email, password);
-    setMsg(authMsg, t("ok"), true);
-    closeModal();
-    } catch (err) {
-      showAuthError(err.message || "Error");
-    }
 
+    // Lukk modalen umiddelbart ved suksess
+    closeModal();
+  } catch (err) {
+    // Vis feilen i samme felt (authMsg)
+    const msg = (err && err.message) ? err.message : "Noe gikk galt";
+    setMsg(authMsg, msg, false);
+    console.error(err);
+  }
 });
+
 
 // logout
 logoutBtn?.addEventListener("click", async () => {
@@ -563,7 +547,8 @@ createForm?.addEventListener("submit", async (e) => {
   try {
     await createApp({ company, role, link, deadline });
     createForm.reset();
-    setMsg(formMsg, t("ok"), true);
+    setMsg(formMsg, "Lagt til");
+
   } catch (err) {
     setMsg(formMsg, err.message || "Error");
   }

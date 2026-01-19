@@ -1,9 +1,6 @@
 // =========================
 // Config
 // =========================
-
-console.log("app.js loaded ");
-
 const API = {
   register: "/api/auth/register",
   login: "/api/auth/login",
@@ -17,7 +14,7 @@ const STORAGE_LANG = "lang"; // "no" | "en"
 // =========================
 // State
 // =========================
-let state = {
+const state = {
   me: null,              // { email }
   apps: [],              // array of JobApplicationDto
   filter: "ALL",         // ALL | PLANLAGT | SOKT | INTERVJU | AVSLATT | TILBUD
@@ -40,7 +37,7 @@ const T = {
     newApp: "Ny søknad",
     apps: "Søknader",
     add: "Legg til",
-    companyReq: "company og role er påkrevd",
+    companyReq: "Firma og stilling er påkrevd",
     loginHint: "Logg inn for å lagre og se dine søknader.",
     emptyLogin: "Ingen treff. Logg inn for å se dine søknader.",
     empty: "Ingen treff.",
@@ -54,7 +51,7 @@ const T = {
     rejected: "Avslått",
     offer: "Tilbud",
     all: "Alle",
-    ok: "OK",
+    regOk: "Bruker opprettet. Sjekk e-posten din for bekreftelseslenke.",
   },
   en: {
     title: "Job tracker",
@@ -67,7 +64,7 @@ const T = {
     newApp: "New application",
     apps: "Applications",
     add: "Add",
-    companyReq: "company and role are required",
+    companyReq: "Company and role are required",
     loginHint: "Sign in to save and view your applications.",
     emptyLogin: "No results. Sign in to view your applications.",
     empty: "No results.",
@@ -81,7 +78,7 @@ const T = {
     rejected: "Rejected",
     offer: "Offer",
     all: "All",
-    ok: "OK",
+    regOk: "Account created. Check your email to verify your account.",
   }
 };
 
@@ -125,18 +122,26 @@ function setMsg(el, text, ok = false) {
   el.classList.toggle("ok", !!ok);
 }
 
-
-
-
 function show(el) { el?.classList.remove("hidden"); }
 function hide(el) { el?.classList.add("hidden"); }
 
+function openModal() {
+  if (!authModal) return;
+  authModal.classList.remove("hidden");
+  document.body.classList.add("modalOpen");
+  setMsg(authMsg, "");
+  setTimeout(() => authEmail?.focus(), 30);
+}
 
-
+function closeModal() {
+  if (!authModal) return;
+  authModal.classList.add("hidden");
+  document.body.classList.remove("modalOpen");
+  setMsg(authMsg, "");
+}
 
 function fmtDate(iso) {
   if (!iso) return "";
-  // iso = "2026-01-18"
   if (state.lang === "no") {
     const [y, m, d] = iso.split("-");
     return `${d}/${m}/${y}`;
@@ -168,62 +173,85 @@ async function apiFetch(url, options = {}) {
   return res;
 }
 
+async function readError(res) {
+  // backend din returnerer ofte plain text
+  const txt = await res.text().catch(() => "");
+  return txt || `HTTP ${res.status}`;
+}
+
 // =========================
 // Rendering
 // =========================
 function applyI18n() {
-  // Header
-  $("#t_title").textContent = t("title");
-  $("#t_subtitle").textContent = t("subtitle");
+  const titleEl = $("#t_title");
+  const subEl = $("#t_subtitle");
+  if (titleEl) titleEl.textContent = t("title");
+  if (subEl) subEl.textContent = t("subtitle");
 
-  loginBtn.textContent = t("login");
-  logoutBtn.textContent = t("logout");
-  langBtn.textContent = state.lang === "no" ? "NO/EN" : "EN/NO";
+  if (loginBtn) loginBtn.textContent = t("login");
+  if (logoutBtn) logoutBtn.textContent = t("logout");
+  if (langBtn) langBtn.textContent = state.lang === "no" ? "NO/EN" : "EN/NO";
 
-  // Cards
-  $("#t_newAppTitle").textContent = t("newApp");
-  $("#t_appsTitle").textContent = t("apps");
-  $("#t_addBtn").textContent = t("add");
+  const newAppTitle = $("#t_newAppTitle");
+  const appsTitle = $("#t_appsTitle");
+  const addBtn = $("#t_addBtn");
+  if (newAppTitle) newAppTitle.textContent = t("newApp");
+  if (appsTitle) appsTitle.textContent = t("apps");
+  if (addBtn) addBtn.textContent = t("add");
 
-  // Filters
-  $("#t_f_all").textContent = t("all");
-  $("#t_f_planned").textContent = t("planned");
-  $("#t_f_applied").textContent = t("applied");
-  $("#t_f_interview").textContent = t("interview");
-  $("#t_f_rejected").textContent = t("rejected");
-  $("#t_f_offer").textContent = t("offer");
+  const fAll = $("#t_f_all");
+  const fPlanned = $("#t_f_planned");
+  const fApplied = $("#t_f_applied");
+  const fInterview = $("#t_f_interview");
+  const fRejected = $("#t_f_rejected");
+  const fOffer = $("#t_f_offer");
 
-  // Form labels
-  $("#t_companyLabel").textContent = state.lang === "no" ? "Firma *" : "Company *";
-  $("#t_roleLabel").textContent = state.lang === "no" ? "Stilling *" : "Role *";
-  $("#t_linkLabel").textContent = t("link");
-  $("#t_deadlineLabel").textContent = t("deadline");
+  if (fAll) fAll.textContent = t("all");
+  if (fPlanned) fPlanned.textContent = t("planned");
+  if (fApplied) fApplied.textContent = t("applied");
+  if (fInterview) fInterview.textContent = t("interview");
+  if (fRejected) fRejected.textContent = t("rejected");
+  if (fOffer) fOffer.textContent = t("offer");
 
-  // Placeholders
-  $("#t_companyPh").setAttribute("placeholder", state.lang === "no" ? "F.eks. NAV / Telenor" : "e.g. NAV / Telenor");
-  $("#t_rolePh").setAttribute("placeholder", state.lang === "no" ? "F.eks. Junior utvikler" : "e.g. Junior developer");
-  $("#t_linkPh").setAttribute("placeholder", "https://...");
+  const companyLabel = $("#t_companyLabel");
+  const roleLabel = $("#t_roleLabel");
+  const linkLabel = $("#t_linkLabel");
+  const deadlineLabel = $("#t_deadlineLabel");
 
-  // Auth modal
-  $("#authTitle").textContent = state.authMode === "login" ? t("login") : t("register");
-  authEmail.setAttribute("placeholder", t("email"));
-  authPassword.setAttribute("placeholder", t("password"));
-  authSubmitBtn.textContent = state.authMode === "login" ? t("login") : t("register");
-  toggleAuthMode.textContent = state.authMode === "login" ? t("register") : t("login");
+  if (companyLabel) companyLabel.textContent = state.lang === "no" ? "Firma *" : "Company *";
+  if (roleLabel) roleLabel.textContent = state.lang === "no" ? "Stilling *" : "Role *";
+  if (linkLabel) linkLabel.textContent = t("link");
+  if (deadlineLabel) deadlineLabel.textContent = t("deadline");
 
-  // Hints
-  $("#t_loginHint").textContent = t("loginHint");
-  $("#t_emptyLogin").textContent = state.me ? t("empty") : t("emptyLogin");
+  const companyPh = $("#t_companyPh");
+  const rolePh = $("#t_rolePh");
+  const linkPh = $("#t_linkPh");
+
+  if (companyPh) companyPh.setAttribute("placeholder", state.lang === "no" ? "F.eks. NAV / Telenor" : "e.g. NAV / Telenor");
+  if (rolePh) rolePh.setAttribute("placeholder", state.lang === "no" ? "F.eks. Junior utvikler" : "e.g. Junior developer");
+  if (linkPh) linkPh.setAttribute("placeholder", "https://...");
+
+  const authTitle = $("#authTitle");
+  if (authTitle) authTitle.textContent = state.authMode === "login" ? t("login") : t("register");
+  if (authEmail) authEmail.setAttribute("placeholder", t("email"));
+  if (authPassword) authPassword.setAttribute("placeholder", t("password"));
+  if (authSubmitBtn) authSubmitBtn.textContent = state.authMode === "login" ? t("login") : t("register");
+  if (toggleAuthMode) toggleAuthMode.textContent = state.authMode === "login" ? t("register") : t("login");
+
+  const loginHint = $("#t_loginHint");
+  const emptyLogin = $("#t_emptyLogin");
+  if (loginHint) loginHint.textContent = t("loginHint");
+  if (emptyLogin) emptyLogin.textContent = state.me ? t("empty") : t("emptyLogin");
 }
 
 function updateAuthUI() {
   if (state.me?.email) {
-    whoami.textContent = state.me.email;
+    if (whoami) whoami.textContent = state.me.email;
     show(whoami);
     show(logoutBtn);
     hide(loginBtn);
   } else {
-    whoami.textContent = "—";
+    if (whoami) whoami.textContent = "—";
     hide(whoami);
     hide(logoutBtn);
     show(loginBtn);
@@ -237,16 +265,14 @@ function filteredApps() {
 }
 
 function renderStats() {
-  // Statistikk basert på ALLE apps (ikke filtrert)
-  const counts = {
-    PLANLAGT: 0, SOKT: 0, INTERVJU: 0, TILBUD: 0, AVSLATT: 0
-  };
+  if (!stats) return;
+
+  const counts = { PLANLAGT: 0, SOKT: 0, INTERVJU: 0, TILBUD: 0, AVSLATT: 0 };
   for (const a of state.apps) {
     if (counts[a.status] !== undefined) counts[a.status]++;
   }
   const total = state.apps.length;
 
-  // Format som i skjermbildet ditt
   stats.textContent =
     `${t("planned")}: ${counts.PLANLAGT} • ` +
     `${t("applied")}: ${counts.SOKT} • ` +
@@ -257,6 +283,8 @@ function renderStats() {
 }
 
 function renderList() {
+  if (!listEl) return;
+
   const apps = filteredApps();
   renderStats();
 
@@ -285,7 +313,6 @@ function renderList() {
     const item = document.createElement("div");
     item.className = "item";
 
-    // overdue styling
     if (a.deadline && a.status !== "AVSLATT" && a.status !== "TILBUD") {
       if (a.deadline < toISODate(today)) item.classList.add("overdue");
     }
@@ -294,6 +321,7 @@ function renderList() {
     top.className = "top";
 
     const left = document.createElement("div");
+
     const title = document.createElement("div");
     title.className = "title";
     title.textContent = `${a.company} — ${a.role}`;
@@ -335,14 +363,24 @@ function renderList() {
       select.appendChild(opt);
     });
     select.addEventListener("change", async () => {
-      await updateStatus(a.id, select.value);
+      try {
+        await updateStatus(a.id, select.value);
+      } catch (e) {
+        // revert UI on error
+        select.value = a.status;
+        console.error(e);
+      }
     });
 
     const delBtn = document.createElement("button");
     delBtn.className = "btn ghost";
     delBtn.textContent = t("del");
     delBtn.addEventListener("click", async () => {
-      await deleteApp(a.id);
+      try {
+        await deleteApp(a.id);
+      } catch (e) {
+        console.error(e);
+      }
     });
 
     actions.appendChild(select);
@@ -367,7 +405,7 @@ async function loadMe() {
       updateAuthUI();
       return;
     }
-    state.me = await res.json(); // { email }
+    state.me = await res.json();
     updateAuthUI();
   } catch {
     state.me = null;
@@ -396,13 +434,8 @@ async function doLogin(email, password) {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
+  if (!res.ok) throw new Error(await readError(res));
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Login failed");
-  }
-
-  // backend returnerer { email }, cookie blir satt automatisk
   state.me = await res.json();
   updateAuthUI();
   await loadApps();
@@ -413,11 +446,7 @@ async function doRegister(email, password) {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Register failed");
-  }
+  if (!res.ok) throw new Error(await readError(res));
 }
 
 async function doLogout() {
@@ -433,10 +462,8 @@ async function createApp(payload) {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Unauthorized");
-  }
+  if (!res.ok) throw new Error(await readError(res));
+
   const created = await res.json();
   state.apps = [created, ...state.apps];
   renderList();
@@ -447,10 +474,8 @@ async function updateStatus(id, status) {
     method: "PUT",
     body: JSON.stringify({ status }),
   });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || "Failed to update");
-  }
+  if (!res.ok) throw new Error(await readError(res));
+
   const updated = await res.json();
   state.apps = state.apps.map(a => (a.id === id ? updated : a));
   renderList();
@@ -458,10 +483,8 @@ async function updateStatus(id, status) {
 
 async function deleteApp(id) {
   const res = await apiFetch(`${API.apps}/${id}`, { method: "DELETE" });
-  if (!res.ok && res.status !== 204) {
-    const text = await res.text();
-    throw new Error(text || "Failed to delete");
-  }
+  if (!(res.status === 204 || res.ok)) throw new Error(await readError(res));
+
   state.apps = state.apps.filter(a => a.id !== id);
   renderList();
 }
@@ -469,63 +492,71 @@ async function deleteApp(id) {
 // =========================
 // Events
 // =========================
-loginBtn?.addEventListener("click", () => openModal());
-closeAuth?.addEventListener("click", () => closeModal());
 
-// lukk modal ved klikk utenfor
+// Make sure clicks always reach the button even if something overlays it
+loginBtn?.addEventListener("click", (e) => {
+  e.preventDefault();
+  openModal();
+});
+
+closeAuth?.addEventListener("click", (e) => {
+  e.preventDefault();
+  closeModal();
+});
+
+// close modal by clicking backdrop
 authModal?.addEventListener("click", (e) => {
   if (e.target === authModal) closeModal();
 });
 
-// bytte login/register
+// toggle login/register
 toggleAuthMode?.addEventListener("click", () => {
   state.authMode = state.authMode === "login" ? "register" : "login";
-  applyI18n();
   setMsg(authMsg, "");
+  applyI18n();
 });
 
-
-// submit auth
+// auth submit
 authForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   setMsg(authMsg, "");
 
-  const email = authEmail.value.trim().toLowerCase();
-  const password = authPassword.value;
+  const email = (authEmail?.value || "").trim().toLowerCase();
+  const password = authPassword?.value || "";
+
+  if (!email || !password) {
+    setMsg(authMsg, state.lang === "no" ? "Fyll inn e-post og passord" : "Enter email and password");
+    return;
+  }
 
   try {
     if (state.authMode === "register") {
       await doRegister(email, password);
-
-      // Ikke vis "OK" - vis en nyttig beskjed
-      setMsg(authMsg, "Bruker opprettet. Sjekk e-posten din for bekreftelseslenke.", true);
-
-      // Bytt til login-mode etter register
+      setMsg(authMsg, t("regOk"), true);
+      // stay open so they can read it, but switch to login
       state.authMode = "login";
       applyI18n();
       return;
     }
 
-    // Login
     await doLogin(email, password);
-
-    // Lukk modalen umiddelbart ved suksess
-    closeModal();
+    closeModal(); // no "OK"
   } catch (err) {
-    // Vis feilen i samme felt (authMsg)
-    const msg = (err && err.message) ? err.message : "Noe gikk galt";
-    setMsg(authMsg, msg, false);
+    setMsg(authMsg, err?.message || "Noe gikk galt");
     console.error(err);
   }
 });
 
-
 // logout
 logoutBtn?.addEventListener("click", async () => {
-  await doLogout();
+  try {
+    await doLogout();
+  } catch (e) {
+    console.error(e);
+  }
 });
 
-// create form
+// create app
 createForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   setMsg(formMsg, "");
@@ -540,7 +571,7 @@ createForm?.addEventListener("submit", async (e) => {
   const company = (fd.get("company") || "").toString().trim();
   const role = (fd.get("role") || "").toString().trim();
   const link = (fd.get("link") || "").toString().trim();
-  const deadline = (fd.get("deadline") || "").toString().trim(); // "YYYY-MM-DD"
+  const deadline = (fd.get("deadline") || "").toString().trim();
 
   if (!company || !role) {
     setMsg(formMsg, t("companyReq"));
@@ -550,10 +581,10 @@ createForm?.addEventListener("submit", async (e) => {
   try {
     await createApp({ company, role, link, deadline });
     createForm.reset();
-    setMsg(formMsg, " ");
-
+    setMsg(formMsg, "", true); // no OK
   } catch (err) {
-    setMsg(formMsg, err.message || "Error");
+    setMsg(formMsg, err?.message || "Error");
+    console.error(err);
   }
 });
 
@@ -562,7 +593,7 @@ filterBtns.forEach(btn => {
   btn.addEventListener("click", () => {
     filterBtns.forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
-    state.filter = btn.dataset.filter;
+    state.filter = btn.dataset.filter || "ALL";
     renderList();
   });
 });

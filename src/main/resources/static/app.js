@@ -1,6 +1,9 @@
 // =========================
 // Config
 // =========================
+
+console.log("app.js loaded ");
+
 const API = {
   register: "/api/auth/register",
   login: "/api/auth/login",

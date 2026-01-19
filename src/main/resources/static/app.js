@@ -547,7 +547,7 @@ createForm?.addEventListener("submit", async (e) => {
   try {
     await createApp({ company, role, link, deadline });
     createForm.reset();
-    setMsg(formMsg, "Lagt til");
+    setMsg(formMsg, " ");
 
   } catch (err) {
     setMsg(formMsg, err.message || "Error");

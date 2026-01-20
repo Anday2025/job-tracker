@@ -21,16 +21,17 @@ public class MailService {
         this.mailgunClient = mailgunClient;
     }
 
+    private void require(String value, String name) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(name + " mangler i Environment (Render)");
+        }
+    }
+
     public void sendVerificationEmail(String to, String link) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalStateException("MAILGUN_API_KEY mangler i environment");
-        }
-        if (domain == null || domain.isBlank()) {
-            throw new IllegalStateException("MAILGUN_DOMAIN mangler i environment");
-        }
-        if (from == null || from.isBlank()) {
-            throw new IllegalStateException("MAIL_FROM mangler i environment");
-        }
+        require(apiKey, "MAILGUN_API_KEY");
+        require(domain, "MAILGUN_DOMAIN");
+        require(from, "MAIL_FROM");
+        require(to, "TO");
 
         String subject = "Bekreft e-post for Jobbsøker-tracker";
         String text = """

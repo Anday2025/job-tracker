@@ -15,6 +15,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
@@ -44,20 +45,17 @@ public class AuthController {
         this.mailService = mailService;
     }
 
-    // ---------- DTO ----------
     public record AuthRequest(
             @Email @NotBlank String email,
             @NotBlank String password
     ) {}
 
-    // ----------------- PASSWORD VALIDATION -----------------
     // Minst 8 tegn, minst én stor bokstav, én liten bokstav og ett tall
     private boolean isStrongPassword(String password) {
         if (password == null) return false;
         return password.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$");
     }
 
-    // ----------------- COOKIE HELPERS (B1) -----------------
     private void setSessionCookie(HttpServletRequest request, HttpServletResponse response, String token) {
         boolean secure = request.isSecure(); // Render = true
         String sameSite = secure ? "None" : "Lax";
@@ -89,7 +87,7 @@ public class AuthController {
     }
 
     private String getBaseUrl(HttpServletRequest request) {
-        // Render: sett APP_BASE_URL=https://job-tracker-0qv9.onrender.com
+        // Render: APP_BASE_URL=https://job-tracker-0qv9.onrender.com
         String baseUrl = System.getenv().getOrDefault("APP_BASE_URL", "").trim();
         if (!baseUrl.isBlank()) return baseUrl;
 
@@ -98,9 +96,10 @@ public class AuthController {
         return scheme + "://" + request.getServerName() + ":" + request.getServerPort();
     }
 
-    // ---------- REGISTER (enabled=false + send verify link) ----------
+    // ---------- REGISTER ----------
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody AuthRequest req) {
+    @Transactional
+    public ResponseEntity<?> register(@RequestBody AuthRequest req, HttpServletRequest request) {
         String email = req.email().toLowerCase().trim();
 
         if (userRepository.existsByEmail(email)) {
@@ -110,57 +109,38 @@ public class AuthController {
 
         if (!isStrongPassword(req.password())) {
             return ResponseEntity.badRequest()
-                    .body(Map.of("error",
-                            "Passordkrav: minst 8 tegn, stor/liten bokstav og tall"));
+                    .body(Map.of("error", "Passordkrav: minst 8 tegn, stor/liten bokstav og tall"));
         }
 
         User u = new User(email, passwordEncoder.encode(req.password()));
         u.setEnabled(false);
+        userRepository.save(u);
 
+        // token gyldig i 24 timer
         String token = UUID.randomUUID().toString();
         Instant expiresAt = Instant.now().plus(Duration.ofHours(24));
         VerificationToken vt = new VerificationToken(token, u, expiresAt);
+        tokenRepo.save(vt);
 
-        String baseUrl = System.getenv("APP_BASE_URL");
-        if (baseUrl == null || baseUrl.isBlank()) {
-            baseUrl = "http://localhost:8080";
-        }
-        String verifyUrl = baseUrl + "/api/auth/verify?token=" + token;
+        String verifyUrl = getBaseUrl(request) + "/api/auth/verify?token=" + token;
 
-        try {
-            userRepository.save(u);
-            tokenRepo.save(vt);
+        // Hvis mail feiler -> exception -> @Transactional ruller tilbake automatisk
+        mailService.sendVerificationEmail(u.getEmail(), verifyUrl);
 
-            mailService.sendVerificationEmail(u.getEmail(), verifyUrl);
-
-            return ResponseEntity.ok(Map.of(
-                    "ok", true,
-                    "message", "Bruker opprettet. Sjekk e-posten din for bekreftelse."
-            ));
-
-        } catch (Exception e) {
-            // 🔥 rollback manuelt
-            tokenRepo.delete(vt);
-            userRepository.delete(u);
-
-            e.printStackTrace();
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of(
-                            "error", "Kunne ikke sende bekreftelsesmail"
-                    ));
-        }
+        return ResponseEntity.ok(Map.of(
+                "ok", true,
+                "message", "Bruker opprettet. Sjekk e-posten din for bekreftelse."
+        ));
     }
-
 
     // ---------- VERIFY ----------
     @GetMapping("/verify")
     public ResponseEntity<?> verify(@RequestParam String token) {
         VerificationToken vt = tokenRepo.findByToken(token).orElse(null);
-        if (vt == null) return ResponseEntity.badRequest().body("Ugyldig token");
+        if (vt == null) return ResponseEntity.badRequest().body(Map.of("error", "Ugyldig token"));
 
-        if (vt.isUsed()) return ResponseEntity.badRequest().body("Token er allerede brukt");
-        if (vt.getExpiresAt().isBefore(Instant.now())) return ResponseEntity.badRequest().body("Token er utløpt");
+        if (vt.isUsed()) return ResponseEntity.badRequest().body(Map.of("error", "Token er allerede brukt"));
+        if (vt.getExpiresAt().isBefore(Instant.now())) return ResponseEntity.badRequest().body(Map.of("error", "Token er utløpt"));
 
         User u = vt.getUser();
         u.setEnabled(true);
@@ -169,10 +149,10 @@ public class AuthController {
         vt.setUsed(true);
         tokenRepo.save(vt);
 
-        return ResponseEntity.ok("Bruker aktivert. Du kan logge inn nå.");
+        return ResponseEntity.ok(Map.of("ok", true, "message", "Bruker aktivert. Du kan logge inn nå."));
     }
 
-    // ---------- LOGIN (only if enabled) ----------
+    // ---------- LOGIN ----------
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest req,
                                    HttpServletRequest request,
@@ -181,12 +161,13 @@ public class AuthController {
 
         User u = userRepository.findByEmail(email).orElse(null);
         if (u == null || !passwordEncoder.matches(req.password(), u.getPasswordHash())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Feil e-post eller passord");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("error", "Feil e-post eller passord"));
         }
 
         if (!u.isEnabled()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("Du må bekrefte e-posten din før du kan logge inn.");
+                    .body(Map.of("error", "Du må bekrefte e-posten din før du kan logge inn."));
         }
 
         String token = jwtService.generateToken(u.getEmail());
@@ -199,7 +180,7 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<?> me(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Unauthorized");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Unauthorized"));
         }
         return ResponseEntity.ok(Map.of("email", auth.getName()));
     }

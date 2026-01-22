@@ -2,7 +2,8 @@
 CREATE TABLE IF NOT EXISTS users (
                                      id BIGSERIAL PRIMARY KEY,
                                      email VARCHAR(255) NOT NULL UNIQUE,
-    password_hash VARCHAR(255) NOT NULL
+    password_hash VARCHAR(255) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE
     );
 
 -- JOB_APPLICATION
@@ -13,12 +14,29 @@ CREATE TABLE IF NOT EXISTS job_application (
     link VARCHAR(1000),
     deadline DATE,
     status VARCHAR(50),
+
     user_id BIGINT NOT NULL,
     CONSTRAINT fk_job_user
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
     ON DELETE CASCADE
     );
 
--- Indeks for raskere "mine søknader"
 CREATE INDEX IF NOT EXISTS idx_job_application_user_id
     ON job_application(user_id);
+
+-- PASSWORD_RESET_TOKEN  (token = PK)
+CREATE TABLE IF NOT EXISTS password_reset_token (
+                                                    token VARCHAR(255) PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    expires_at TIMESTAMPTZ,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT fk_password_reset_user
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE
+    );
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_token_user_id
+    ON password_reset_token(user_id);

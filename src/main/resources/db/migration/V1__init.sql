@@ -44,3 +44,20 @@ CREATE TABLE password_reset_token (
 
 CREATE INDEX idx_password_reset_token_user_id
     ON password_reset_token(user_id);
+
+
+-- VERIFICATION_TOKEN (for email verification)
+CREATE TABLE IF NOT EXISTS verification_token (
+                                                  token VARCHAR(255) PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT fk_verification_token_user
+    FOREIGN KEY (user_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE
+    );
+
+CREATE INDEX IF NOT EXISTS idx_verification_token_user_id
+    ON verification_token(user_id);

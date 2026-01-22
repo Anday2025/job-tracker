@@ -4,8 +4,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import java.time.LocalDate;
 
+@Table(name = "job_application")
 @Entity
 public class JobApplication {
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -6,14 +6,18 @@ import jakarta.persistence.*;
 @Table(name = "users", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
 public class User {
 
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
+
+
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false)
     private String email;
 
-    @Column(nullable = false)
-    private String passwordHash;
+   // @Column(nullable = false)
+   // private String passwordHash;
 
     public User() {}
 

@@ -1,5 +1,7 @@
 package com.example.jobtracker.controller;
 
+import com.example.jobtracker.model.PasswordResetToken;
+import com.example.jobtracker.repository.PasswordResetTokenRepository;
 import com.example.jobtracker.model.User;
 import com.example.jobtracker.model.VerificationToken;
 import com.example.jobtracker.repository.UserRepository;
@@ -32,16 +34,20 @@ public class AuthController {
     private final JwtService jwtService;
     private final VerificationTokenRepository tokenRepo;
     private final MailService mailService;
+    private final PasswordResetTokenRepository passwordResetRepo;
+
 
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
                           JwtService jwtService,
                           VerificationTokenRepository tokenRepo,
+                          PasswordResetTokenRepository passwordResetRepo,
                           MailService mailService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.tokenRepo = tokenRepo;
+        this.passwordResetRepo = passwordResetRepo;
         this.mailService = mailService;
     }
 
@@ -191,4 +197,84 @@ public class AuthController {
         clearSessionCookie(request, response);
         return ResponseEntity.ok(Map.of("ok", true));
     }
+
+
+    @PostMapping("/resend-verification")
+    @Transactional
+    public ResponseEntity<?> resendVerification(@RequestBody Map<String, String> body, HttpServletRequest request) {
+        String email = body.getOrDefault("email", "").toLowerCase().trim();
+        if (email.isBlank()) return ResponseEntity.badRequest().body(Map.of("error", "E-post mangler"));
+
+        User u = userRepository.findByEmail(email).orElse(null);
+
+        // Returner OK uansett (ikke avslør om epost finnes)
+        if (u == null) return ResponseEntity.ok(Map.of("ok", true));
+        if (u.isEnabled()) return ResponseEntity.ok(Map.of("ok", true, "message", "Brukeren er allerede aktivert"));
+
+        // Lag nytt token (du kan også slette gamle her hvis du vil)
+        String token = UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plus(Duration.ofHours(24));
+        VerificationToken vt = new VerificationToken(token, u, expiresAt);
+        tokenRepo.save(vt);
+
+        String verifyUrl = getBaseUrl(request) + "/api/auth/verify?token=" + token;
+        mailService.sendVerificationEmail(u.getEmail(), verifyUrl);
+
+        return ResponseEntity.ok(Map.of("ok", true, "message", "Ny bekreftelse sendt på e-post."));
+    }
+
+    @PostMapping("/forgot-password")
+    @Transactional
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body, HttpServletRequest request) {
+        String email = body.getOrDefault("email", "").toLowerCase().trim();
+        if (email.isBlank()) return ResponseEntity.badRequest().body(Map.of("error", "E-post mangler"));
+
+        User u = userRepository.findByEmail(email).orElse(null);
+
+        // Returner OK uansett (ikke avslør om epost finnes)
+        if (u == null) return ResponseEntity.ok(Map.of("ok", true));
+
+        String token = UUID.randomUUID().toString();
+        Instant expiresAt = Instant.now().plus(Duration.ofMinutes(30));
+
+        PasswordResetToken prt = new PasswordResetToken(token, u, expiresAt);
+        passwordResetRepo.save(prt);
+
+        // ✅ Denne åpner reset view automatisk i frontend
+        String resetUrl = getBaseUrl(request) + "/?token=" + token;
+
+        // Du må ha denne i MailService (sendResetPasswordEmail)
+        mailService.sendResetPasswordEmail(u.getEmail(), resetUrl);
+
+        return ResponseEntity.ok(Map.of("ok", true, "message", "Hvis e-post finnes, er reset-link sendt."));
+    }
+    @PostMapping("/reset-password")
+    @Transactional
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
+        String token = body.getOrDefault("token", "").trim();
+        String newPassword = body.getOrDefault("password", "").trim();
+
+        if (token.isBlank()) return ResponseEntity.badRequest().body(Map.of("error", "Token mangler"));
+        if (!isStrongPassword(newPassword)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Passordkrav: minst 8 tegn, stor/liten bokstav og tall"));
+        }
+
+        PasswordResetToken prt = passwordResetRepo.findById(token).orElse(null);
+        if (prt == null) return ResponseEntity.badRequest().body(Map.of("error", "Ugyldig token"));
+
+        if (prt.isUsed()) return ResponseEntity.badRequest().body(Map.of("error", "Token er allerede brukt"));
+        if (prt.getExpiresAt().isBefore(Instant.now())) return ResponseEntity.badRequest().body(Map.of("error", "Token er utløpt"));
+
+        User u = prt.getUser();
+        u.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(u);
+
+        prt.setUsed(true);
+        passwordResetRepo.save(prt);
+
+        return ResponseEntity.ok(Map.of("ok", true, "message", "Passord er oppdatert."));
+    }
+
+
+
 }

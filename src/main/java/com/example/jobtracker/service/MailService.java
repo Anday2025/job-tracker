@@ -3,6 +3,8 @@ package com.example.jobtracker.service;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import static jakarta.mail.Transport.send;
+
 @Service
 public class MailService {
 
@@ -47,4 +49,11 @@ public class MailService {
 
         mailgunClient.sendEmail(apiKey, domain, from, to, subject, text);
     }
+
+    public void sendResetPasswordEmail(String to, String resetUrl) {
+        String subject = "Reset passord";
+        String body = "Klikk her for å resette passordet ditt:\n\n" + resetUrl + "\n\nDenne linken utløper om 30 minutter.";
+        send(to, subject, body);
+    }
+
 }

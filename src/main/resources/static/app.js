@@ -1,12 +1,22 @@
 // =========================
 // Config
 // =========================
+
+
 const API = {
   register: "/api/auth/register",
   login: "/api/auth/login",
   me: "/api/auth/me",
   logout: "/api/auth/logout",
   apps: "/api/apps",
+
+  forgotPassword: "/api/auth/forgot-password",
+  resendVerification: "/api/auth/resend-verification",
+  resetPassword: "/api/auth/reset-password",
+
+
+  // ✅ Reset password endpoint (må finnes i backend)
+  resetPassword: "/api/auth/reset-password",
 };
 
 const STORAGE_LANG = "lang"; // "no" | "en"
@@ -19,7 +29,12 @@ const state = {
   apps: [],              // array of JobApplicationDto
   filter: "ALL",         // ALL | PLANLAGT | SOKT | INTERVJU | AVSLATT | TILBUD
   lang: localStorage.getItem(STORAGE_LANG) || "no",
-  authMode: "login",     // "login" | "register"
+
+  // authMode: "login" | "register" | "reset"
+  authMode: "login",
+
+  // ✅ reset password
+  resetToken: null,
 };
 
 // =========================
@@ -34,6 +49,11 @@ const T = {
     register: "Opprett bruker",
     email: "E-post",
     password: "Passord",
+    newPassword: "Nytt passord",
+    confirmPassword: "Bekreft passord",
+    resetPassword: "Reset passord",
+    resetBtn: "Reset",
+    back: "Tilbake",
     newApp: "Ny søknad",
     apps: "Søknader",
     add: "Legg til",
@@ -52,6 +72,9 @@ const T = {
     offer: "Tilbud",
     all: "Alle",
     regOk: "Bruker opprettet. Sjekk e-posten din for bekreftelseslenke.",
+    pwMismatch: "Passordene matcher ikke.",
+    missingToken: "Mangler token i URL.",
+    resetOk: "Passord oppdatert! Du kan logge inn nå.",
   },
   en: {
     title: "Job tracker",
@@ -61,6 +84,11 @@ const T = {
     register: "Create account",
     email: "Email",
     password: "Password",
+    newPassword: "New password",
+    confirmPassword: "Confirm password",
+    resetPassword: "Reset password",
+    resetBtn: "Reset",
+    back: "Back",
     newApp: "New application",
     apps: "Applications",
     add: "Add",
@@ -79,6 +107,9 @@ const T = {
     offer: "Offer",
     all: "All",
     regOk: "Account created. Check your email to verify your account.",
+    pwMismatch: "Passwords do not match.",
+    missingToken: "Missing token in URL.",
+    resetOk: "Password updated! You can sign in now.",
   }
 };
 
@@ -103,7 +134,15 @@ const authEmail = $("#authEmail");
 const authPassword = $("#authPassword");
 const authSubmitBtn = $("#authSubmitBtn");
 const toggleAuthMode = $("#toggleAuthMode");
+const backToLoginBtn = $("#backToLoginBtn");
 const authMsg = $("#authMsg");
+
+const resetFields = $("#resetFields");
+const newPassword = $("#newPassword");
+const confirmPassword = $("#confirmPassword");
+
+const authEmailRow = $("#authEmailRow");
+const authPasswordRow = $("#authPasswordRow");
 
 const createForm = $("#createForm");
 const formMsg = $("#formMsg");
@@ -128,15 +167,16 @@ function hide(el) { el?.classList.add("hidden"); }
 function openModal() {
   if (!authModal) return;
   authModal.classList.remove("hidden");
-  document.body.classList.add("modalOpen");
   setMsg(authMsg, "");
-  setTimeout(() => authEmail?.focus(), 30);
+  setTimeout(() => {
+    if (state.authMode === "reset") newPassword?.focus();
+    else authEmail?.focus();
+  }, 30);
 }
 
 function closeModal() {
   if (!authModal) return;
   authModal.classList.add("hidden");
-  document.body.classList.remove("modalOpen");
   setMsg(authMsg, "");
 }
 
@@ -174,9 +214,54 @@ async function apiFetch(url, options = {}) {
 }
 
 async function readError(res) {
-  // backend din returnerer ofte plain text
   const txt = await res.text().catch(() => "");
   return txt || `HTTP ${res.status}`;
+}
+
+// =========================
+// Auth modal mode switching
+// =========================
+function setAuthMode(mode) {
+  state.authMode = mode;
+
+  // Title + buttons
+  const authTitle = $("#authTitle");
+  if (authTitle) {
+    authTitle.textContent =
+        mode === "login" ? t("login") :
+            mode === "register" ? t("register") :
+                t("resetPassword");
+  }
+
+  // Toggle which fields show
+  if (mode === "reset") {
+    hide(authEmailRow);
+    hide(authPasswordRow);
+    show(resetFields);
+
+    if (authSubmitBtn) authSubmitBtn.textContent = t("resetBtn");
+    hide(toggleAuthMode);
+    show(backToLoginBtn);
+  } else {
+    show(authEmailRow);
+    show(authPasswordRow);
+    hide(resetFields);
+
+    if (authSubmitBtn) authSubmitBtn.textContent = mode === "login" ? t("login") : t("register");
+    show(toggleAuthMode);
+    hide(backToLoginBtn);
+  }
+
+  // Placeholders
+  if (authEmail) authEmail.setAttribute("placeholder", t("email"));
+  if (authPassword) authPassword.setAttribute("placeholder", t("password"));
+  if (newPassword) newPassword.setAttribute("placeholder", t("newPassword"));
+  if (confirmPassword) confirmPassword.setAttribute("placeholder", t("confirmPassword"));
+
+  if (toggleAuthMode) toggleAuthMode.textContent = mode === "login" ? t("register") : t("login");
+  if (backToLoginBtn) backToLoginBtn.textContent = t("back");
+
+  setMsg(authMsg, "");
 }
 
 // =========================
@@ -231,17 +316,13 @@ function applyI18n() {
   if (rolePh) rolePh.setAttribute("placeholder", state.lang === "no" ? "F.eks. Junior utvikler" : "e.g. Junior developer");
   if (linkPh) linkPh.setAttribute("placeholder", "https://...");
 
-  const authTitle = $("#authTitle");
-  if (authTitle) authTitle.textContent = state.authMode === "login" ? t("login") : t("register");
-  if (authEmail) authEmail.setAttribute("placeholder", t("email"));
-  if (authPassword) authPassword.setAttribute("placeholder", t("password"));
-  if (authSubmitBtn) authSubmitBtn.textContent = state.authMode === "login" ? t("login") : t("register");
-  if (toggleAuthMode) toggleAuthMode.textContent = state.authMode === "login" ? t("register") : t("login");
-
   const loginHint = $("#t_loginHint");
   const emptyLogin = $("#t_emptyLogin");
   if (loginHint) loginHint.textContent = t("loginHint");
   if (emptyLogin) emptyLogin.textContent = state.me ? t("empty") : t("emptyLogin");
+
+  // Re-apply auth modal mode labels
+  setAuthMode(state.authMode);
 }
 
 function updateAuthUI() {
@@ -274,12 +355,12 @@ function renderStats() {
   const total = state.apps.length;
 
   stats.textContent =
-    `${t("planned")}: ${counts.PLANLAGT} • ` +
-    `${t("applied")}: ${counts.SOKT} • ` +
-    `${t("interview")}: ${counts.INTERVJU} • ` +
-    `${t("offer")}: ${counts.TILBUD} • ` +
-    `${t("rejected")}: ${counts.AVSLATT} • ` +
-    `Total: ${total}`;
+      `${t("planned")}: ${counts.PLANLAGT} • ` +
+      `${t("applied")}: ${counts.SOKT} • ` +
+      `${t("interview")}: ${counts.INTERVJU} • ` +
+      `${t("offer")}: ${counts.TILBUD} • ` +
+      `${t("rejected")}: ${counts.AVSLATT} • ` +
+      `Total: ${total}`;
 }
 
 function renderList() {
@@ -366,7 +447,6 @@ function renderList() {
       try {
         await updateStatus(a.id, select.value);
       } catch (e) {
-        // revert UI on error
         select.value = a.status;
         console.error(e);
       }
@@ -449,6 +529,18 @@ async function doRegister(email, password) {
   if (!res.ok) throw new Error(await readError(res));
 }
 
+async function doResetPassword(token, password) {
+  const res = await apiFetch(API.resetPassword, {
+    method: "POST",
+    body: JSON.stringify({
+      token,
+      password,
+      newPassword: password, // ekstra felt (ufarlig)
+    }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+}
+
 async function doLogout() {
   await apiFetch(API.logout, { method: "POST" });
   state.me = null;
@@ -492,10 +584,9 @@ async function deleteApp(id) {
 // =========================
 // Events
 // =========================
-
-// Make sure clicks always reach the button even if something overlays it
 loginBtn?.addEventListener("click", (e) => {
   e.preventDefault();
+  setAuthMode("login");
   openModal();
 });
 
@@ -509,11 +600,21 @@ authModal?.addEventListener("click", (e) => {
   if (e.target === authModal) closeModal();
 });
 
-// toggle login/register
+// toggle login/register (NOT reset)
 toggleAuthMode?.addEventListener("click", () => {
-  state.authMode = state.authMode === "login" ? "register" : "login";
-  setMsg(authMsg, "");
-  applyI18n();
+  const next = state.authMode === "login" ? "register" : "login";
+  setAuthMode(next);
+});
+
+// back from reset to login
+backToLoginBtn?.addEventListener("click", () => {
+  state.resetToken = null;
+  // optional: fjern token fra URL (så den ikke åpner reset igjen)
+  const url = new URL(window.location.href);
+  url.searchParams.delete("token");
+  window.history.replaceState({}, "", url.toString());
+
+  setAuthMode("login");
 });
 
 // auth submit
@@ -521,28 +622,69 @@ authForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   setMsg(authMsg, "");
 
-  const email = (authEmail?.value || "").trim().toLowerCase();
-  const password = authPassword?.value || "";
-
-  if (!email || !password) {
-    setMsg(authMsg, state.lang === "no" ? "Fyll inn e-post og passord" : "Enter email and password");
-    return;
-  }
-
   try {
-    if (state.authMode === "register") {
-      await doRegister(email, password);
-      setMsg(authMsg, t("regOk"), true);
-      // stay open so they can read it, but switch to login
-      state.authMode = "login";
-      applyI18n();
+    if (state.authMode === "reset") {
+      const token = state.resetToken;
+      if (!token) {
+        setMsg(authMsg, t("missingToken"));
+        return;
+      }
+
+      const p1 = (newPassword?.value || "").trim();
+      const p2 = (confirmPassword?.value || "").trim();
+
+      if (!p1 || !p2) {
+        setMsg(authMsg, state.lang === "no" ? "Fyll inn begge passordfeltene" : "Fill in both password fields");
+        return;
+      }
+      if (p1 !== p2) {
+        setMsg(authMsg, t("pwMismatch"));
+        return;
+      }
+
+      await doResetPassword(token, p1);
+
+      setMsg(authMsg, t("resetOk"), true);
+
+      // etter reset → bytt til login
+      setTimeout(() => {
+        // fjern token fra URL
+        const url = new URL(window.location.href);
+        url.searchParams.delete("token");
+        window.history.replaceState({}, "", url.toString());
+
+        state.resetToken = null;
+        setAuthMode("login");
+        newPassword.value = "";
+        confirmPassword.value = "";
+        authEmail?.focus();
+      }, 350);
+
       return;
     }
 
+    // login/register
+    const email = (authEmail?.value || "").trim().toLowerCase();
+    const password = authPassword?.value || "";
+
+    if (!email || !password) {
+      setMsg(authMsg, state.lang === "no" ? "Fyll inn e-post og passord" : "Enter email and password");
+      return;
+    }
+
+    if (state.authMode === "register") {
+      await doRegister(email, password);
+      setMsg(authMsg, t("regOk"), true);
+      setAuthMode("login");
+      return;
+    }
+
+    // login
     await doLogin(email, password);
-    closeModal(); // no "OK"
+    closeModal();
+
   } catch (err) {
-    setMsg(authMsg, err?.message || "Noe gikk galt");
+    setMsg(authMsg, err?.message || (state.lang === "no" ? "Noe gikk galt" : "Something went wrong"));
     console.error(err);
   }
 });
@@ -563,6 +705,7 @@ createForm?.addEventListener("submit", async (e) => {
 
   if (!state.me) {
     setMsg(formMsg, t("loginHint"));
+    setAuthMode("login");
     openModal();
     return;
   }
@@ -581,7 +724,7 @@ createForm?.addEventListener("submit", async (e) => {
   try {
     await createApp({ company, role, link, deadline });
     createForm.reset();
-    setMsg(formMsg, "", true); // no OK
+    setMsg(formMsg, "", true);
   } catch (err) {
     setMsg(formMsg, err?.message || "Error");
     console.error(err);
@@ -610,8 +753,76 @@ langBtn?.addEventListener("click", () => {
 // Init
 // =========================
 (async function init() {
+  // ✅ auto-open reset modal if URL has ?token=
+  const url = new URL(window.location.href);
+  const token = url.searchParams.get("token");
+  if (token) {
+    state.resetToken = token;
+    setAuthMode("reset");
+    openModal();
+  } else {
+    setAuthMode("login");
+  }
+
   applyI18n();
   updateAuthUI();
   await loadMe();
   await loadApps();
 })();
+
+async function doForgotPassword(email) {
+  const res = await apiFetch(API.forgotPassword, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return await res.json().catch(() => ({}));
+}
+
+async function doResendVerification(email) {
+  const res = await apiFetch(API.resendVerification, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  return await res.json().catch(() => ({}));
+}
+
+
+const forgotBtn = document.querySelector("#forgotBtn");
+const resendBtn = document.querySelector("#resendBtn");
+
+forgotBtn?.addEventListener("click", async () => {
+  setMsg(authMsg, "");
+  const email = (authEmail?.value || "").trim().toLowerCase();
+  if (!email) {
+    setMsg(authMsg, state.lang === "no" ? "Skriv inn e-posten din først" : "Enter your email first");
+    return;
+  }
+  try {
+    await doForgotPassword(email);
+    setMsg(authMsg, state.lang === "no"
+        ? "Hvis e-post finnes, har vi sendt reset-link."
+        : "If the email exists, a reset link was sent.", true);
+  } catch (e) {
+    setMsg(authMsg, e.message || "Error");
+  }
+});
+
+resendBtn?.addEventListener("click", async () => {
+  setMsg(authMsg, "");
+  const email = (authEmail?.value || "").trim().toLowerCase();
+  if (!email) {
+    setMsg(authMsg, state.lang === "no" ? "Skriv inn e-posten din først" : "Enter your email first");
+    return;
+  }
+  try {
+    await doResendVerification(email);
+    setMsg(authMsg, state.lang === "no"
+        ? "Ny bekreftelse sendt (hvis e-post finnes)."
+        : "Verification email resent (if the email exists).", true);
+  } catch (e) {
+    setMsg(authMsg, e.message || "Error");
+  }
+});
+

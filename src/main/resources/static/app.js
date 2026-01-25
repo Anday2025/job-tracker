@@ -1,8 +1,6 @@
 // =========================
 // Config
 // =========================
-
-
 const API = {
   register: "/api/auth/register",
   login: "/api/auth/login",
@@ -10,12 +8,9 @@ const API = {
   logout: "/api/auth/logout",
   apps: "/api/apps",
 
-  forgotPassword: "/api/auth/forgot-password",
+  // NEW
   resendVerification: "/api/auth/resend-verification",
-  resetPassword: "/api/auth/reset-password",
-
-
-  // ✅ Reset password endpoint (må finnes i backend)
+  forgotPassword: "/api/auth/forgot-password",
   resetPassword: "/api/auth/reset-password",
 };
 
@@ -29,16 +24,13 @@ const state = {
   apps: [],              // array of JobApplicationDto
   filter: "ALL",         // ALL | PLANLAGT | SOKT | INTERVJU | AVSLATT | TILBUD
   lang: localStorage.getItem(STORAGE_LANG) || "no",
-
-  // authMode: "login" | "register" | "reset"
-  authMode: "login",
-
-  // ✅ reset password
+  authMode: "login",     // "login" | "register"
+  authView: "login",     // login | register | forgot | reset | resend
   resetToken: null,
 };
 
 // =========================
-// i18n (minimal)
+// i18n
 // =========================
 const T = {
   no: {
@@ -49,14 +41,16 @@ const T = {
     register: "Opprett bruker",
     email: "E-post",
     password: "Passord",
-    newPassword: "Nytt passord",
-    confirmPassword: "Bekreft passord",
-    resetPassword: "Reset passord",
-    resetBtn: "Reset",
+    newPass: "Nytt passord",
+    confirmPass: "Bekreft passord",
+    reset: "Reset",
     back: "Tilbake",
-    newApp: "Ny søknad",
-    apps: "Søknader",
-    add: "Legg til",
+    forgot: "Forgot password?",
+    resend: "Resend verification",
+    forgotTitle: "Glemt passord",
+    resetTitle: "Reset passord",
+    resendTitle: "Send verifisering på nytt",
+    send: "Send",
     companyReq: "Firma og stilling er påkrevd",
     loginHint: "Logg inn for å lagre og se dine søknader.",
     emptyLogin: "Ingen treff. Logg inn for å se dine søknader.",
@@ -71,10 +65,14 @@ const T = {
     rejected: "Avslått",
     offer: "Tilbud",
     all: "Alle",
+
     regOk: "Bruker opprettet. Sjekk e-posten din for bekreftelseslenke.",
-    pwMismatch: "Passordene matcher ikke.",
-    missingToken: "Mangler token i URL.",
-    resetOk: "Passord oppdatert! Du kan logge inn nå.",
+    forgotOk: "Hvis e-posten finnes, har vi sendt en reset-lenke. Sjekk innboksen din.",
+    resendOk: "Ny verifiseringslenke er sendt (hvis e-posten finnes).",
+    resetOk: "Passord er endret. Sjekk e-posten din for bekreftelse.",
+    passMismatch: "Passord er ikke samme",
+    fillEmail: "Fyll inn e-post",
+    fillAll: "Fyll inn alle felter",
   },
   en: {
     title: "Job tracker",
@@ -84,14 +82,16 @@ const T = {
     register: "Create account",
     email: "Email",
     password: "Password",
-    newPassword: "New password",
-    confirmPassword: "Confirm password",
-    resetPassword: "Reset password",
-    resetBtn: "Reset",
+    newPass: "New password",
+    confirmPass: "Confirm password",
+    reset: "Reset",
     back: "Back",
-    newApp: "New application",
-    apps: "Applications",
-    add: "Add",
+    forgot: "Forgot password?",
+    resend: "Resend verification",
+    forgotTitle: "Forgot password",
+    resetTitle: "Reset password",
+    resendTitle: "Resend verification",
+    send: "Send",
     companyReq: "Company and role are required",
     loginHint: "Sign in to save and view your applications.",
     emptyLogin: "No results. Sign in to view your applications.",
@@ -106,10 +106,14 @@ const T = {
     rejected: "Rejected",
     offer: "Offer",
     all: "All",
+
     regOk: "Account created. Check your email to verify your account.",
-    pwMismatch: "Passwords do not match.",
-    missingToken: "Missing token in URL.",
-    resetOk: "Password updated! You can sign in now.",
+    forgotOk: "If the email exists, we sent a reset link. Check your inbox.",
+    resendOk: "Verification email sent (if the email exists).",
+    resetOk: "Password changed. Check your email for confirmation.",
+    passMismatch: "Passwords do not match",
+    fillEmail: "Enter email",
+    fillAll: "Fill in all fields",
   }
 };
 
@@ -134,15 +138,7 @@ const authEmail = $("#authEmail");
 const authPassword = $("#authPassword");
 const authSubmitBtn = $("#authSubmitBtn");
 const toggleAuthMode = $("#toggleAuthMode");
-const backToLoginBtn = $("#backToLoginBtn");
 const authMsg = $("#authMsg");
-
-const resetFields = $("#resetFields");
-const newPassword = $("#newPassword");
-const confirmPassword = $("#confirmPassword");
-
-const authEmailRow = $("#authEmailRow");
-const authPasswordRow = $("#authPasswordRow");
 
 const createForm = $("#createForm");
 const formMsg = $("#formMsg");
@@ -167,37 +163,22 @@ function hide(el) { el?.classList.add("hidden"); }
 function openModal() {
   if (!authModal) return;
   authModal.classList.remove("hidden");
-  setMsg(authMsg, "");
+  document.body.classList.add("modalOpen");
   setTimeout(() => {
-    if (state.authMode === "reset") newPassword?.focus();
-    else authEmail?.focus();
+    // focus riktig felt
+    if (state.authView === "reset") {
+      $("#authPasswordNew")?.focus();
+    } else {
+      authEmail?.focus();
+    }
   }, 30);
 }
 
 function closeModal() {
   if (!authModal) return;
   authModal.classList.add("hidden");
+  document.body.classList.remove("modalOpen");
   setMsg(authMsg, "");
-}
-
-function fmtDate(iso) {
-  if (!iso) return "";
-  if (state.lang === "no") {
-    const [y, m, d] = iso.split("-");
-    return `${d}/${m}/${y}`;
-  }
-  return iso;
-}
-
-function statusLabel(s) {
-  switch (s) {
-    case "PLANLAGT": return t("planned");
-    case "SOKT": return t("applied");
-    case "INTERVJU": return t("interview");
-    case "AVSLATT": return t("rejected");
-    case "TILBUD": return t("offer");
-    default: return s;
-  }
 }
 
 // Cookie-auth: viktig at vi inkluderer cookies
@@ -214,58 +195,19 @@ async function apiFetch(url, options = {}) {
 }
 
 async function readError(res) {
+  // prøv JSON først
+  try {
+    const j = await res.json();
+    if (j?.error) return j.error;
+    if (j?.message) return j.message;
+  } catch {}
+  // fallback text
   const txt = await res.text().catch(() => "");
   return txt || `HTTP ${res.status}`;
 }
 
 // =========================
-// Auth modal mode switching
-// =========================
-function setAuthMode(mode) {
-  state.authMode = mode;
-
-  // Title + buttons
-  const authTitle = $("#authTitle");
-  if (authTitle) {
-    authTitle.textContent =
-        mode === "login" ? t("login") :
-            mode === "register" ? t("register") :
-                t("resetPassword");
-  }
-
-  // Toggle which fields show
-  if (mode === "reset") {
-    hide(authEmailRow);
-    hide(authPasswordRow);
-    show(resetFields);
-
-    if (authSubmitBtn) authSubmitBtn.textContent = t("resetBtn");
-    hide(toggleAuthMode);
-    show(backToLoginBtn);
-  } else {
-    show(authEmailRow);
-    show(authPasswordRow);
-    hide(resetFields);
-
-    if (authSubmitBtn) authSubmitBtn.textContent = mode === "login" ? t("login") : t("register");
-    show(toggleAuthMode);
-    hide(backToLoginBtn);
-  }
-
-  // Placeholders
-  if (authEmail) authEmail.setAttribute("placeholder", t("email"));
-  if (authPassword) authPassword.setAttribute("placeholder", t("password"));
-  if (newPassword) newPassword.setAttribute("placeholder", t("newPassword"));
-  if (confirmPassword) confirmPassword.setAttribute("placeholder", t("confirmPassword"));
-
-  if (toggleAuthMode) toggleAuthMode.textContent = mode === "login" ? t("register") : t("login");
-  if (backToLoginBtn) backToLoginBtn.textContent = t("back");
-
-  setMsg(authMsg, "");
-}
-
-// =========================
-// Rendering
+// Rendering (Main UI)
 // =========================
 function applyI18n() {
   const titleEl = $("#t_title");
@@ -280,9 +222,9 @@ function applyI18n() {
   const newAppTitle = $("#t_newAppTitle");
   const appsTitle = $("#t_appsTitle");
   const addBtn = $("#t_addBtn");
-  if (newAppTitle) newAppTitle.textContent = t("newApp");
+  if (newAppTitle) newAppTitle.textContent = state.lang === "no" ? "Ny søknad" : "New application";
   if (appsTitle) appsTitle.textContent = t("apps");
-  if (addBtn) addBtn.textContent = t("add");
+  if (addBtn) addBtn.textContent = t("add") || (state.lang === "no" ? "Legg til" : "Add");
 
   const fAll = $("#t_f_all");
   const fPlanned = $("#t_f_planned");
@@ -321,8 +263,7 @@ function applyI18n() {
   if (loginHint) loginHint.textContent = t("loginHint");
   if (emptyLogin) emptyLogin.textContent = state.me ? t("empty") : t("emptyLogin");
 
-  // Re-apply auth modal mode labels
-  setAuthMode(state.authMode);
+  // Modal i18n styres i setAuthView()
 }
 
 function updateAuthUI() {
@@ -338,6 +279,29 @@ function updateAuthUI() {
     show(loginBtn);
   }
   applyI18n();
+}
+
+// =========================
+// Apps list rendering
+// =========================
+function fmtDate(iso) {
+  if (!iso) return "";
+  if (state.lang === "no") {
+    const [y, m, d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  }
+  return iso;
+}
+
+function statusLabel(s) {
+  switch (s) {
+    case "PLANLAGT": return t("planned");
+    case "SOKT": return t("applied");
+    case "INTERVJU": return t("interview");
+    case "AVSLATT": return t("rejected");
+    case "TILBUD": return t("offer");
+    default: return s;
+  }
 }
 
 function filteredApps() {
@@ -475,7 +439,194 @@ function renderList() {
 }
 
 // =========================
-// API actions
+// Modal logic (Login/Register/Forgot/Reset/Resend)
+// =========================
+function ensureResetUI() {
+  // Lager "Bekreft passord" input hvis den ikke finnes
+  let confirm = $("#authPasswordConfirm");
+  if (!confirm && authPassword?.parentElement) {
+    confirm = document.createElement("input");
+    confirm.id = "authPasswordConfirm";
+    confirm.type = "password";
+    confirm.autocomplete = "new-password";
+    confirm.placeholder = t("confirmPass");
+    confirm.className = authPassword.className; // samme stil
+    authPassword.insertAdjacentElement("afterend", confirm);
+  }
+
+  // Lager ekstra lenker under knapper hvis de ikke finnes
+  let extraRow = $("#authExtraRow");
+  if (!extraRow && authForm) {
+    extraRow = document.createElement("div");
+    extraRow.id = "authExtraRow";
+    extraRow.style.display = "flex";
+    extraRow.style.justifyContent = "space-between";
+    extraRow.style.marginTop = "10px";
+
+    const forgot = document.createElement("button");
+    forgot.type = "button";
+    forgot.id = "forgotBtn";
+    forgot.className = "linkBtn";
+    forgot.textContent = t("forgot");
+
+    const resend = document.createElement("button");
+    resend.type = "button";
+    resend.id = "resendBtn";
+    resend.className = "linkBtn";
+    resend.textContent = t("resend");
+
+    extraRow.appendChild(forgot);
+    extraRow.appendChild(resend);
+    authForm.appendChild(extraRow);
+  }
+}
+
+function setAuthView(view, opts = {}) {
+  state.authView = view;
+  if (opts.token !== undefined) state.resetToken = opts.token;
+
+  ensureResetUI();
+
+  const title = $("#authTitle");
+  const confirm = $("#authPasswordConfirm");
+  const forgotBtn = $("#forgotBtn");
+  const resendBtn = $("#resendBtn");
+
+  setMsg(authMsg, "");
+
+  // default visning
+  show(authEmail);
+  show(authPassword);
+  hide(confirm);
+
+  // standard buttons
+  if (authSubmitBtn) authSubmitBtn.textContent = t("login");
+  if (toggleAuthMode) {
+    toggleAuthMode.style.display = "inline-flex";
+    toggleAuthMode.textContent = t("register");
+  }
+
+  // ekstra lenker vises alltid, men kan være disabled i reset-view
+  if (forgotBtn) forgotBtn.style.display = "inline-flex";
+  if (resendBtn) resendBtn.style.display = "inline-flex";
+
+  // LOGIN/REGISTER switch
+  if (view === "login") {
+    state.authMode = "login";
+    if (title) title.textContent = t("login");
+    if (authEmail) authEmail.placeholder = t("email");
+    if (authPassword) authPassword.placeholder = t("password");
+    if (authSubmitBtn) authSubmitBtn.textContent = t("login");
+    if (toggleAuthMode) toggleAuthMode.textContent = t("register");
+  }
+
+  if (view === "register") {
+    state.authMode = "register";
+    if (title) title.textContent = t("register");
+    if (authEmail) authEmail.placeholder = t("email");
+    if (authPassword) authPassword.placeholder = t("password");
+    if (authSubmitBtn) authSubmitBtn.textContent = t("register");
+    if (toggleAuthMode) toggleAuthMode.textContent = t("login");
+  }
+
+  if (view === "forgot") {
+    if (title) title.textContent = t("forgotTitle");
+    if (authSubmitBtn) authSubmitBtn.textContent = t("send");
+    hide(authPassword);
+    hide(confirm);
+    if (toggleAuthMode) toggleAuthMode.textContent = t("back");
+  }
+
+  if (view === "resend") {
+    if (title) title.textContent = t("resendTitle");
+    if (authSubmitBtn) authSubmitBtn.textContent = t("send");
+    hide(authPassword);
+    hide(confirm);
+    if (toggleAuthMode) toggleAuthMode.textContent = t("back");
+  }
+
+  if (view === "reset") {
+    if (title) title.textContent = t("resetTitle");
+    hide(authEmail);
+    show(authPassword);
+    show(confirm);
+
+    if (authPassword) authPassword.placeholder = t("newPass");
+    if (confirm) confirm.placeholder = t("confirmPass");
+    if (authSubmitBtn) authSubmitBtn.textContent = t("reset");
+    if (toggleAuthMode) toggleAuthMode.textContent = t("back");
+
+    // i reset-view skjuler vi resend/forgot linker (du har allerede "Tilbake")
+    if (forgotBtn) forgotBtn.style.display = "none";
+    if (resendBtn) resendBtn.style.display = "none";
+  }
+
+  applyI18n();
+}
+
+function clearResetTokenFromUrl() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("token");
+  window.history.replaceState({}, "", url.toString());
+}
+
+// =========================
+// API actions (Auth)
+// =========================
+async function doLogin(email, password) {
+  const res = await apiFetch(API.login, {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+
+  state.me = await res.json();
+  updateAuthUI();
+  await loadApps();
+}
+
+async function doRegister(email, password) {
+  const res = await apiFetch(API.register, {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+}
+
+async function doResendVerification(email) {
+  const res = await apiFetch(API.resendVerification, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+}
+
+async function doForgotPassword(email) {
+  const res = await apiFetch(API.forgotPassword, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+}
+
+async function doResetPassword(token, newPassword) {
+  const res = await apiFetch(API.resetPassword, {
+    method: "POST",
+    body: JSON.stringify({ token, newPassword }),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+}
+
+async function doLogout() {
+  await apiFetch(API.logout, { method: "POST" });
+  state.me = null;
+  state.apps = [];
+  updateAuthUI();
+  renderList();
+}
+
+// =========================
+// API actions (Apps)
 // =========================
 async function loadMe() {
   try {
@@ -506,46 +657,6 @@ async function loadApps() {
     return;
   }
   state.apps = await res.json();
-  renderList();
-}
-
-async function doLogin(email, password) {
-  const res = await apiFetch(API.login, {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) throw new Error(await readError(res));
-
-  state.me = await res.json();
-  updateAuthUI();
-  await loadApps();
-}
-
-async function doRegister(email, password) {
-  const res = await apiFetch(API.register, {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-  if (!res.ok) throw new Error(await readError(res));
-}
-
-async function doResetPassword(token, password) {
-  const res = await apiFetch(API.resetPassword, {
-    method: "POST",
-    body: JSON.stringify({
-      token,
-      password,
-      newPassword: password, // ekstra felt (ufarlig)
-    }),
-  });
-  if (!res.ok) throw new Error(await readError(res));
-}
-
-async function doLogout() {
-  await apiFetch(API.logout, { method: "POST" });
-  state.me = null;
-  state.apps = [];
-  updateAuthUI();
   renderList();
 }
 
@@ -586,7 +697,7 @@ async function deleteApp(id) {
 // =========================
 loginBtn?.addEventListener("click", (e) => {
   e.preventDefault();
-  setAuthMode("login");
+  setAuthView("login");
   openModal();
 });
 
@@ -600,91 +711,133 @@ authModal?.addEventListener("click", (e) => {
   if (e.target === authModal) closeModal();
 });
 
-// toggle login/register (NOT reset)
+// Toggle / Back button
 toggleAuthMode?.addEventListener("click", () => {
-  const next = state.authMode === "login" ? "register" : "login";
-  setAuthMode(next);
+  setMsg(authMsg, "");
+
+  if (state.authView === "forgot" || state.authView === "reset" || state.authView === "resend") {
+    setAuthView("login");
+    return;
+  }
+
+  if (state.authMode === "login") {
+    setAuthView("register");
+  } else {
+    setAuthView("login");
+  }
 });
 
-// back from reset to login
-backToLoginBtn?.addEventListener("click", () => {
-  state.resetToken = null;
-  // optional: fjern token fra URL (så den ikke åpner reset igjen)
-  const url = new URL(window.location.href);
-  url.searchParams.delete("token");
-  window.history.replaceState({}, "", url.toString());
+// Forgot + Resend buttons
+document.addEventListener("click", (e) => {
+  const id = e.target?.id;
 
-  setAuthMode("login");
+  if (id === "forgotBtn") {
+    setAuthView("forgot");
+    return;
+  }
+
+  if (id === "resendBtn") {
+    setAuthView("resend");
+    return;
+  }
 });
 
-// auth submit
+// auth submit (all views)
 authForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
   setMsg(authMsg, "");
 
   try {
-    if (state.authMode === "reset") {
-      const token = state.resetToken;
-      if (!token) {
-        setMsg(authMsg, t("missingToken"));
+    // RESET
+    if (state.authView === "reset") {
+      const newPass = (authPassword?.value || "").trim();
+      const confirm = ($("#authPasswordConfirm")?.value || "").trim();
+
+      if (!newPass || !confirm) {
+        setMsg(authMsg, t("fillAll"));
         return;
       }
 
-      const p1 = (newPassword?.value || "").trim();
-      const p2 = (confirmPassword?.value || "").trim();
-
-      if (!p1 || !p2) {
-        setMsg(authMsg, state.lang === "no" ? "Fyll inn begge passordfeltene" : "Fill in both password fields");
-        return;
-      }
-      if (p1 !== p2) {
-        setMsg(authMsg, t("pwMismatch"));
+      if (newPass !== confirm) {
+        setMsg(authMsg, t("passMismatch"));
         return;
       }
 
-      await doResetPassword(token, p1);
+      if (!state.resetToken) {
+        setMsg(authMsg, "Token mangler");
+        return;
+      }
+
+      await doResetPassword(state.resetToken, newPass);
 
       setMsg(authMsg, t("resetOk"), true);
 
-      // etter reset → bytt til login
-      setTimeout(() => {
-        // fjern token fra URL
-        const url = new URL(window.location.href);
-        url.searchParams.delete("token");
-        window.history.replaceState({}, "", url.toString());
+      // rydde token i url + gå tilbake til login
+      clearResetTokenFromUrl();
+      state.resetToken = null;
 
-        state.resetToken = null;
-        setAuthMode("login");
-        newPassword.value = "";
-        confirmPassword.value = "";
-        authEmail?.focus();
-      }, 350);
+      setTimeout(() => {
+        setAuthView("login");
+        // du kan velge closeModal() hvis du vil lukke automatisk:
+        // closeModal();
+      }, 900);
 
       return;
     }
 
-    // login/register
+    // FORGOT
+    if (state.authView === "forgot") {
+      const email = (authEmail?.value || "").trim().toLowerCase();
+      if (!email) {
+        setMsg(authMsg, t("fillEmail"));
+        return;
+      }
+
+      await doForgotPassword(email);
+      setMsg(authMsg, t("forgotOk"), true);
+
+      setTimeout(() => setAuthView("login"), 900);
+      return;
+    }
+
+    // RESEND
+    if (state.authView === "resend") {
+      const email = (authEmail?.value || "").trim().toLowerCase();
+      if (!email) {
+        setMsg(authMsg, t("fillEmail"));
+        return;
+      }
+
+      await doResendVerification(email);
+      setMsg(authMsg, t("resendOk"), true);
+
+      setTimeout(() => setAuthView("login"), 900);
+      return;
+    }
+
+    // LOGIN / REGISTER
     const email = (authEmail?.value || "").trim().toLowerCase();
-    const password = authPassword?.value || "";
+    const password = (authPassword?.value || "").trim();
 
     if (!email || !password) {
       setMsg(authMsg, state.lang === "no" ? "Fyll inn e-post og passord" : "Enter email and password");
       return;
     }
 
-    if (state.authMode === "register") {
+    if (state.authView === "register") {
       await doRegister(email, password);
       setMsg(authMsg, t("regOk"), true);
-      setAuthMode("login");
+
+      // switch til login automatisk
+      setTimeout(() => setAuthView("login"), 900);
       return;
     }
 
     // login
     await doLogin(email, password);
     closeModal();
-
   } catch (err) {
-    setMsg(authMsg, err?.message || (state.lang === "no" ? "Noe gikk galt" : "Something went wrong"));
+    setMsg(authMsg, err?.message || "Noe gikk galt");
     console.error(err);
   }
 });
@@ -705,7 +858,7 @@ createForm?.addEventListener("submit", async (e) => {
 
   if (!state.me) {
     setMsg(formMsg, t("loginHint"));
-    setAuthMode("login");
+    setAuthView("login");
     openModal();
     return;
   }
@@ -745,6 +898,9 @@ filterBtns.forEach(btn => {
 langBtn?.addEventListener("click", () => {
   state.lang = state.lang === "no" ? "en" : "no";
   localStorage.setItem(STORAGE_LANG, state.lang);
+
+  // oppdater placeholders/labels i modal også
+  setAuthView(state.authView);
   applyI18n();
   renderList();
 });
@@ -752,77 +908,22 @@ langBtn?.addEventListener("click", () => {
 // =========================
 // Init
 // =========================
-(async function init() {
-  // ✅ auto-open reset modal if URL has ?token=
-  const url = new URL(window.location.href);
-  const token = url.searchParams.get("token");
+(function initAutoResetFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get("token");
   if (token) {
+    // hvis URL har ?token=... → åpne reset view automatisk
     state.resetToken = token;
-    setAuthMode("reset");
+    setAuthView("reset", { token });
     openModal();
   } else {
-    setAuthMode("login");
+    setAuthView("login");
   }
+})();
 
+(async function init() {
   applyI18n();
   updateAuthUI();
   await loadMe();
   await loadApps();
 })();
-
-async function doForgotPassword(email) {
-  const res = await apiFetch(API.forgotPassword, {
-    method: "POST",
-    body: JSON.stringify({ email }),
-  });
-  if (!res.ok) throw new Error(await readError(res));
-  return await res.json().catch(() => ({}));
-}
-
-async function doResendVerification(email) {
-  const res = await apiFetch(API.resendVerification, {
-    method: "POST",
-    body: JSON.stringify({ email }),
-  });
-  if (!res.ok) throw new Error(await readError(res));
-  return await res.json().catch(() => ({}));
-}
-
-
-const forgotBtn = document.querySelector("#forgotBtn");
-const resendBtn = document.querySelector("#resendBtn");
-
-forgotBtn?.addEventListener("click", async () => {
-  setMsg(authMsg, "");
-  const email = (authEmail?.value || "").trim().toLowerCase();
-  if (!email) {
-    setMsg(authMsg, state.lang === "no" ? "Skriv inn e-posten din først" : "Enter your email first");
-    return;
-  }
-  try {
-    await doForgotPassword(email);
-    setMsg(authMsg, state.lang === "no"
-        ? "Hvis e-post finnes, har vi sendt reset-link."
-        : "If the email exists, a reset link was sent.", true);
-  } catch (e) {
-    setMsg(authMsg, e.message || "Error");
-  }
-});
-
-resendBtn?.addEventListener("click", async () => {
-  setMsg(authMsg, "");
-  const email = (authEmail?.value || "").trim().toLowerCase();
-  if (!email) {
-    setMsg(authMsg, state.lang === "no" ? "Skriv inn e-posten din først" : "Enter your email first");
-    return;
-  }
-  try {
-    await doResendVerification(email);
-    setMsg(authMsg, state.lang === "no"
-        ? "Ny bekreftelse sendt (hvis e-post finnes)."
-        : "Verification email resent (if the email exists).", true);
-  } catch (e) {
-    setMsg(authMsg, e.message || "Error");
-  }
-});
-

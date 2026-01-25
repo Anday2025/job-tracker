@@ -27,15 +27,16 @@ public class MailService {
         }
     }
 
-    private void requireMailgunConfig(String to) {
+    private void requireMailConfig(String to) {
         require(apiKey, "MAILGUN_API_KEY");
         require(domain, "MAILGUN_DOMAIN");
         require(from, "MAIL_FROM");
         require(to, "TO");
     }
 
-    public void sendVerificationEmail(String to, String link) {
-        requireMailgunConfig(to);
+    // ✅ Verify e-post (brukes ved register + resend)
+    public void sendVerificationEmail(String to, String verifyUrl) {
+        requireMailConfig(to);
 
         String subject = "Bekreft e-post for Jobbsøker-tracker";
         String text = """
@@ -44,15 +45,18 @@ public class MailService {
                 Klikk her for å aktivere brukeren din:
                 %s
 
+                Denne linken utløper om 24 timer.
+
                 Hilsen
                 Jobbsøker-tracker
-                """.formatted(link);
+                """.formatted(verifyUrl);
 
         mailgunClient.sendEmail(apiKey, domain, from, to, subject, text);
     }
 
+    // ✅ Forgot password → sender reset link
     public void sendResetPasswordEmail(String to, String resetUrl) {
-        requireMailgunConfig(to);
+        requireMailConfig(to);
 
         String subject = "Reset passord";
         String text = """
@@ -68,6 +72,25 @@ public class MailService {
                 Hilsen
                 Jobbsøker-tracker
                 """.formatted(resetUrl);
+
+        mailgunClient.sendEmail(apiKey, domain, from, to, subject, text);
+    }
+
+    // ✅ Etter reset → bekreftelse på e-post
+    public void sendPasswordChangedEmail(String to) {
+        requireMailConfig(to);
+
+        String subject = "Passord endret ";
+        String text = """
+                Hei!
+
+                Passordet ditt er nå endret
+
+                Hvis du ikke gjorde dette selv, anbefaler vi at du endrer passordet igjen umiddelbart.
+
+                Hilsen
+                Jobbsøker-tracker
+                """;
 
         mailgunClient.sendEmail(apiKey, domain, from, to, subject, text);
     }

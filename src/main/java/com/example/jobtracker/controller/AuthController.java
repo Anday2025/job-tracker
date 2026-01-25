@@ -36,7 +36,6 @@ public class AuthController {
     private final MailService mailService;
     private final PasswordResetTokenRepository passwordResetRepo;
 
-
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
                           JwtService jwtService,
@@ -63,7 +62,7 @@ public class AuthController {
     }
 
     private void setSessionCookie(HttpServletRequest request, HttpServletResponse response, String token) {
-        boolean secure = request.isSecure(); // Render = true
+        boolean secure = request.isSecure();
         String sameSite = secure ? "None" : "Lax";
 
         ResponseCookie cookie = ResponseCookie.from("SESSION", token)
@@ -93,11 +92,9 @@ public class AuthController {
     }
 
     private String getBaseUrl(HttpServletRequest request) {
-        // Render: APP_BASE_URL=https://job-tracker-0qv9.onrender.com
         String baseUrl = System.getenv().getOrDefault("APP_BASE_URL", "").trim();
         if (!baseUrl.isBlank()) return baseUrl;
 
-        // fallback lokal
         String scheme = request.isSecure() ? "https" : "http";
         return scheme + "://" + request.getServerName() + ":" + request.getServerPort();
     }
@@ -122,15 +119,12 @@ public class AuthController {
         u.setEnabled(false);
         userRepository.save(u);
 
-        // token gyldig i 24 timer
         String token = UUID.randomUUID().toString();
         Instant expiresAt = Instant.now().plus(Duration.ofHours(24));
         VerificationToken vt = new VerificationToken(token, u, expiresAt);
         tokenRepo.save(vt);
 
         String verifyUrl = getBaseUrl(request) + "/api/auth/verify?token=" + token;
-
-        // Hvis mail feiler -> exception -> @Transactional ruller tilbake automatisk
         mailService.sendVerificationEmail(u.getEmail(), verifyUrl);
 
         return ResponseEntity.ok(Map.of(
@@ -198,7 +192,7 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
-
+    // ---------- RESEND VERIFICATION ----------
     @PostMapping("/resend-verification")
     @Transactional
     public ResponseEntity<?> resendVerification(@RequestBody Map<String, String> body, HttpServletRequest request) {
@@ -211,7 +205,6 @@ public class AuthController {
         if (u == null) return ResponseEntity.ok(Map.of("ok", true));
         if (u.isEnabled()) return ResponseEntity.ok(Map.of("ok", true, "message", "Brukeren er allerede aktivert"));
 
-        // Lag nytt token (du kan også slette gamle her hvis du vil)
         String token = UUID.randomUUID().toString();
         Instant expiresAt = Instant.now().plus(Duration.ofHours(24));
         VerificationToken vt = new VerificationToken(token, u, expiresAt);
@@ -223,6 +216,7 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("ok", true, "message", "Ny bekreftelse sendt på e-post."));
     }
 
+    // ---------- FORGOT PASSWORD ----------
     @PostMapping("/forgot-password")
     @Transactional
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body, HttpServletRequest request) {
@@ -240,23 +234,31 @@ public class AuthController {
         PasswordResetToken prt = new PasswordResetToken(token, u, expiresAt);
         passwordResetRepo.save(prt);
 
-        // ✅ Denne åpner reset view automatisk i frontend
+        // ✅ frontend åpner reset modal automatisk med ?token=
         String resetUrl = getBaseUrl(request) + "/?token=" + token;
 
-        // Du må ha denne i MailService (sendResetPasswordEmail)
         mailService.sendResetPasswordEmail(u.getEmail(), resetUrl);
 
         return ResponseEntity.ok(Map.of("ok", true, "message", "Hvis e-post finnes, er reset-link sendt."));
     }
+
+    // ---------- RESET PASSWORD ----------
     @PostMapping("/reset-password")
     @Transactional
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
         String token = body.getOrDefault("token", "").trim();
-        String newPassword = body.getOrDefault("password", "").trim();
+
+        // ✅ Viktig: frontend sender "newPassword"
+        // (vi støtter også "password" som fallback)
+        String newPassword = body.getOrDefault("newPassword", "").trim();
+        if (newPassword.isBlank()) {
+            newPassword = body.getOrDefault("password", "").trim();
+        }
 
         if (token.isBlank()) return ResponseEntity.badRequest().body(Map.of("error", "Token mangler"));
         if (!isStrongPassword(newPassword)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Passordkrav: minst 8 tegn, stor/liten bokstav og tall"));
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Passordkrav: minst 8 tegn, stor/liten bokstav og tall"));
         }
 
         PasswordResetToken prt = passwordResetRepo.findById(token).orElse(null);
@@ -272,9 +274,9 @@ public class AuthController {
         prt.setUsed(true);
         passwordResetRepo.save(prt);
 
+        // ✅ Send bekreftelse e-post: passord endret
+        mailService.sendPasswordChangedEmail(u.getEmail());
+
         return ResponseEntity.ok(Map.of("ok", true, "message", "Passord er oppdatert."));
     }
-
-
-
 }

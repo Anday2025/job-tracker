@@ -26,27 +26,18 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.userDetailsService = userDetailsService;
     }
 
+    // ✅ Vi filtrerer kun /api/** (ikke frontend)
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String p = request.getServletPath();
+        String path = request.getRequestURI();
 
-        // ✅ FRONTEND
-        if (p.equals("/") || p.equals("/index.html")) return true;
+        // aldri filtrer frontend / statiske filer
+        if (!path.startsWith("/api")) return true;
 
-        // ✅ AUTH API (aldri filtrer)
-        if (p.startsWith("/api/auth")) return true;
+        // aldri filtrer auth-endepunkter
+        if (path.startsWith("/api/auth")) return true;
 
-        // ✅ STATISKE FILER
-        return p.equals("/favicon.ico")
-                || p.endsWith(".css")
-                || p.endsWith(".js")
-                || p.endsWith(".map")
-                || p.endsWith(".png")
-                || p.endsWith(".jpg")
-                || p.endsWith(".jpeg")
-                || p.endsWith(".svg")
-                || p.endsWith(".webp")
-                || p.endsWith(".ico");
+        return false;
     }
 
     @Override
@@ -56,7 +47,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String token = readCookie(request, "SESSION");
 
-        // ✅ Ikke logget inn => bare gå videre
+        // Ingen cookie? => la request gå videre uten auth
         if (token == null || token.isBlank()) {
             filterChain.doFilter(request, response);
             return;
@@ -70,16 +61,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
                 if (jwtService.isTokenValid(token, userDetails)) {
                     UsernamePasswordAuthenticationToken auth =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities()
-                            );
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                     auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(auth);
                 }
             }
-
         } catch (Exception ignored) {
-            // ✅ ugyldig token => fortsett uten auth
+            // Hvis token er ugyldig -> ingen auth, SecurityConfig bestemmer om det blir 401
         }
 
         filterChain.doFilter(request, response);

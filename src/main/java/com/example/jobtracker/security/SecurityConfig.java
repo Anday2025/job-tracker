@@ -2,7 +2,9 @@ package com.example.jobtracker.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -29,60 +31,80 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * ✅ 1) AUTH CHAIN: gjelder kun /api/auth/**
+     * Denne MÅ komme først, ellers kan en annen chain ta requesten og gi 401.
+     */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    @Order(1)
+    public SecurityFilterChain authChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/api/auth/**")
+                .csrf(csrf -> csrf.disable())
+                .cors(Customizer.withDefaults())
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .anyRequest().permitAll()
+                );
+
+        return http.build();
+    }
+
+    /**
+     * ✅ 2) APP/API CHAIN: alt annet
+     */
+    @Bean
+    @Order(2)
+    public SecurityFilterChain appChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> {})
+                .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-                //.anonymous(a -> a.disable()) // ✅ VIKTIG
-
                 .authorizeHttpRequests(auth -> auth
+                        // Statiske filer / frontend
                         .requestMatchers(
-                                "/", "/index.html", "/styles.css", "/app.js",
-                                "/favicon.ico",
+                                "/", "/index.html", "/styles.css", "/app.js", "/favicon.ico",
                                 "/**/*.css", "/**/*.js", "/**/*.png", "/**/*.jpg", "/**/*.jpeg",
                                 "/**/*.svg", "/**/*.webp", "/**/*.ico", "/**/*.map"
                         ).permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
+
+                        // Preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .anyRequest().authenticated()
+
+                        // Alt API utenom auth krever login
+                        .requestMatchers("/api/**").authenticated()
+
+                        // resten ok
+                        .anyRequest().permitAll()
                 )
-                .exceptionHandling(e -> e.authenticationEntryPoint((req, res, ex) -> {
-                    res.setStatus(401);
-                    res.setContentType("text/plain; charset=utf-8");
-                    res.getWriter().write("Unauthorized");
-                }))
+
+                // JWT cookie filter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-
+    // ✅ CORS (cookies + Render)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
 
         cfg.setAllowedOrigins(List.of(
                 "https://job-tracker-0qv9.onrender.com",
-
-                // vanlige dev-servere
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "http://localhost:8080",
-
-                // IntelliJ preview (veldig vanlig hos deg)
                 "http://localhost:63342"
         ));
 
-        cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
-        // Viktig: hvis du senere sender Authorization-header (ikke cookie),
-        // ellers er dette ok uansett.
-        cfg.setAllowedHeaders(List.of("Content-Type", "Accept", "Authorization"));
+        // tryggest: tillat alt
+        cfg.setAllowedHeaders(List.of("*"));
 
-        cfg.setAllowCredentials(true); // 👈 MÅ være true for cookies
+        cfg.setAllowCredentials(true);
         cfg.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource src = new UrlBasedCorsConfigurationSource();

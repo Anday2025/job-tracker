@@ -1,6 +1,5 @@
 package com.example.jobtracker.service;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -8,90 +7,75 @@ public class MailService {
 
     private final MailgunClient mailgunClient;
 
-    @Value("${MAILGUN_API_KEY:}")
-    private String apiKey;
-
-    @Value("${MAILGUN_DOMAIN:}")
-    private String domain;
-
-    @Value("${MAILGUN_BASE_URL:https://api.mailgun.net}")
-    private String baseUrl;
-
-    @Value("${MAIL_FROM:}")
-    private String from;
-
     public MailService(MailgunClient mailgunClient) {
         this.mailgunClient = mailgunClient;
     }
 
-    private void require(String value, String name) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException(name + " mangler i Render env");
+    private String env(String key, String fallback) {
+        String v = System.getenv(key);
+        if (v == null) return fallback;
+        v = v.trim();
+        return v.isBlank() ? fallback : v;
+    }
+
+    private void sendOrThrow(String to, String subject, String text, String html) {
+        String apiKey  = env("MAILGUN_API_KEY", "");
+        String domain  = env("MAILGUN_DOMAIN", "");
+        String baseUrl = env("MAILGUN_BASE_URL", "https://api.mailgun.net"); // ✅ EU: https://api.eu.mailgun.net
+        String from    = env("MAIL_FROM", "");
+
+        try {
+            mailgunClient.sendEmail(apiKey, baseUrl, domain, from, to, subject, text, html);
+        } catch (Exception e) {
+            // Dette er meldingen du allerede viser i UI
+            throw new RuntimeException("Kunne ikke sende e-post. Sjekk Mailgun settings/region.", e);
         }
     }
 
-    // ---------- VERIFY ----------
-    public void sendVerificationEmail(String to, String link) {
-        require(apiKey, "MAILGUN_API_KEY");
-        require(domain, "MAILGUN_DOMAIN");
-        require(from, "MAIL_FROM");
+    public void sendVerificationEmail(String to, String verifyUrl) {
+        String subject = "Bekreft e-posten din";
+        String text = "Trykk på lenken for å bekrefte e-posten din:\n\n" + verifyUrl;
+        String html =
+                "<div style='font-family:system-ui,Segoe UI,Roboto,Arial'>" +
+                        "<h2>Bekreft e-posten din</h2>" +
+                        "<p>Klikk på knappen under for å bekrefte e-posten din:</p>" +
+                        "<p><a href='" + verifyUrl + "' style='display:inline-block;padding:10px 14px;" +
+                        "background:#4f46e5;color:#fff;border-radius:10px;text-decoration:none;font-weight:700'>" +
+                        "Bekreft e-post</a></p>" +
+                        "<p style='color:#666'>Hvis knappen ikke virker, bruk denne lenken:<br/>" +
+                        "<a href='" + verifyUrl + "'>" + verifyUrl + "</a></p>" +
+                        "</div>";
 
-        String subject = "Bekreft e-post for Jobbsøker-tracker";
-        String text = """
-                Hei!
-
-                Klikk her for å aktivere brukeren din:
-                %s
-
-                Hvis du ikke opprettet konto, ignorer denne e-posten.
-
-                Hilsen
-                Jobbsøker-tracker
-                """.formatted(link);
-
-        mailgunClient.sendEmail(apiKey, domain, baseUrl, from, to, subject, text);
+        sendOrThrow(to, subject, text, html);
     }
 
-    // ---------- RESET PASSWORD ----------
     public void sendResetPasswordEmail(String to, String resetUrl) {
-        require(apiKey, "MAILGUN_API_KEY");
-        require(domain, "MAILGUN_DOMAIN");
-        require(from, "MAIL_FROM");
+        String subject = "Nullstill passord";
+        String text = "Trykk på lenken for å nullstille passordet ditt:\n\n" + resetUrl;
+        String html =
+                "<div style='font-family:system-ui,Segoe UI,Roboto,Arial'>" +
+                        "<h2>Nullstill passord</h2>" +
+                        "<p>Klikk på knappen under for å lage nytt passord:</p>" +
+                        "<p><a href='" + resetUrl + "' style='display:inline-block;padding:10px 14px;" +
+                        "background:#0ea5e9;color:#fff;border-radius:10px;text-decoration:none;font-weight:700'>" +
+                        "Nullstill passord</a></p>" +
+                        "<p style='color:#666'>Hvis knappen ikke virker, bruk denne lenken:<br/>" +
+                        "<a href='" + resetUrl + "'>" + resetUrl + "</a></p>" +
+                        "</div>";
 
-        String subject = "Reset passord";
-        String text = """
-                Hei!
-
-                Klikk her for å resette passordet ditt:
-                %s
-
-                Linken utløper om 30 minutter.
-                Hvis du ikke ba om dette, ignorer meldingen.
-
-                Hilsen
-                Jobbsøker-tracker
-                """.formatted(resetUrl);
-
-        mailgunClient.sendEmail(apiKey, domain, baseUrl, from, to, subject, text);
+        sendOrThrow(to, subject, text, html);
     }
 
-    // ---------- PASSWORD CHANGED CONFIRM ----------
     public void sendPasswordChangedEmail(String to) {
-        require(apiKey, "MAILGUN_API_KEY");
-        require(domain, "MAILGUN_DOMAIN");
-        require(from, "MAIL_FROM");
+        String subject = "Passord endret";
+        String text = "Passordet ditt er nettopp endret. Hvis dette ikke var deg, ta kontakt umiddelbart.";
+        String html =
+                "<div style='font-family:system-ui,Segoe UI,Roboto,Arial'>" +
+                        "<h2>Passord endret</h2>" +
+                        "<p>Passordet ditt er nettopp endret.</p>" +
+                        "<p style='color:#666'>Hvis dette ikke var deg, ta kontakt umiddelbart.</p>" +
+                        "</div>";
 
-        String subject = "Passordet ditt ble endret";
-        String text = """
-                Hei!
-
-                Passordet ditt ble nylig endret.
-                Hvis dette ikke var deg, kontakt support umiddelbart.
-
-                Hilsen
-                Jobbsøker-tracker
-                """;
-
-        mailgunClient.sendEmail(apiKey, domain, baseUrl, from, to, subject, text);
+        sendOrThrow(to, subject, text, html);
     }
 }

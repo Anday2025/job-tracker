@@ -4,60 +4,37 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 
 @Component
 public class MailgunClient {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
-    private static String env(String key) {
-        return System.getenv(key) == null ? "" : System.getenv(key).trim();
+    public MailgunClient() {
+        this.restTemplate = new RestTemplate();
     }
 
-    private static String normalizeBaseUrl(String raw) {
-        if (raw == null) return "https://api.mailgun.net";
-        String v = raw.trim();
-        if (v.isBlank()) return "https://api.mailgun.net";
-
-        // hvis du har satt "eu" / "us"
-        if (v.equalsIgnoreCase("eu")) return "https://api.eu.mailgun.net";
-        if (v.equalsIgnoreCase("us")) return "https://api.mailgun.net";
-
-        // hvis du har satt full URL
-        if (v.startsWith("http://") || v.startsWith("https://")) {
-            // fjern trailing slash
-            return v.endsWith("/") ? v.substring(0, v.length() - 1) : v;
-        }
-
-        // fallback hvis noen har skrevet "api.eu.mailgun.net"
-        if (v.startsWith("api.")) return "https://" + v;
-
-        return "https://api.mailgun.net";
-    }
-
+    /**
+     * Send e-post via Mailgun HTTP API
+     */
     public void sendEmail(String from, String to, String subject, String text) {
         String apiKey = env("MAILGUN_API_KEY");
         String domain = env("MAILGUN_DOMAIN");
-        String baseUrl = normalizeBaseUrl(env("MAILGUN_BASE_URL"));
+        String baseUrl = resolveBaseUrl(System.getenv("MAILGUN_BASE_URL"));
 
-        if (apiKey.isBlank()) throw new RuntimeException("MAILGUN_API_KEY mangler");
-        if (domain.isBlank()) throw new RuntimeException("MAILGUN_DOMAIN mangler");
-        if (from == null || from.isBlank()) throw new RuntimeException("MAIL_FROM mangler");
-        if (to == null || to.isBlank()) throw new RuntimeException("to mangler");
+        if (isBlank(apiKey) || isBlank(domain)) {
+            throw new RuntimeException("Mailgun er ikke konfigurert (MAILGUN_API_KEY / MAILGUN_DOMAIN mangler).");
+        }
 
+        // Riktig Mailgun endpoint:
+        // POST https://api.eu.mailgun.net/v3/<domain>/messages
         String url = baseUrl + "/v3/" + domain + "/messages";
 
-        // Basic auth: api:<key>
-        String basic = Base64.getEncoder().encodeToString(("api:" + apiKey).getBytes(StandardCharsets.UTF_8));
-
         HttpHeaders headers = new HttpHeaders();
+        headers.setBasicAuth("api", apiKey); // <- viktig: username må være "api"
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.set("Authorization", "Basic " + basic);
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("from", from);
@@ -71,16 +48,57 @@ public class MailgunClient {
             ResponseEntity<String> res = restTemplate.exchange(url, HttpMethod.POST, req, String.class);
 
             if (!res.getStatusCode().is2xxSuccessful()) {
-                throw new RuntimeException("Mailgun failed: HTTP " + res.getStatusCode() + " body=" + res.getBody());
+                throw new RuntimeException("Mailgun failed: HTTP " + res.getStatusCode().value()
+                        + " body=" + res.getBody());
             }
-        } catch (HttpStatusCodeException e) {
-            // Her får du status + body fra Mailgun (veldig nyttig)
+        } catch (RestClientResponseException e) {
+            // ✅ Spring 6: bruk getStatusCode().value() (ikke getRawStatusCode)
             throw new RuntimeException(
-                    "Mailgun error: HTTP " + e.getStatusCode() + " body=" + e.getResponseBodyAsString(),
+                    "Mailgun error: HTTP " + e.getStatusCode().value()
+                            + " body=" + safeBody(e.getResponseBodyAsString()),
                     e
             );
         } catch (Exception e) {
             throw new RuntimeException("Mailgun request failed: " + e.getMessage(), e);
         }
+    }
+
+    // ---------------- helpers ----------------
+
+    private static String resolveBaseUrl(String raw) {
+        String v = (raw == null) ? "" : raw.trim();
+
+        // Tillat både: "eu" / "us" / full url
+        if (v.equalsIgnoreCase("eu")) return "https://api.eu.mailgun.net";
+        if (v.equalsIgnoreCase("us")) return "https://api.mailgun.net";
+
+        if (isBlank(v)) {
+            // Default til US hvis ikke satt
+            return "https://api.mailgun.net";
+        }
+
+        // Hvis de har skrevet "api.eu.mailgun.net" uten https://
+        if (!v.startsWith("http://") && !v.startsWith("https://")) {
+            return "https://" + v;
+        }
+
+        // Fjern evt trailing slash
+        if (v.endsWith("/")) v = v.substring(0, v.length() - 1);
+        return v;
+    }
+
+    private static String env(String key) {
+        String v = System.getenv(key);
+        return v == null ? "" : v.trim();
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.trim().isEmpty();
+    }
+
+    private static String safeBody(String body) {
+        if (body == null) return "";
+        // unngå gigantiske logger
+        return body.length() > 2000 ? body.substring(0, 2000) + "..." : body;
     }
 }

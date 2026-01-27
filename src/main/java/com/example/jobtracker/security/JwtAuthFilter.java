@@ -26,24 +26,29 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         this.userDetailsService = userDetailsService;
     }
 
-    // ✅ Vi filtrerer kun /api/** (ikke frontend)
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
+        // ✅ Bruk servletPath (mer stabilt bak proxy / context-path)
+        String path = request.getServletPath();
 
-        // aldri filtrer frontend / statiske filer
-        if (!path.startsWith("/api")) return true;
+        // Ikke filtrer alt som ikke er /api
+        if (path == null || !path.startsWith("/api")) return true;
 
-        // aldri filtrer auth-endepunkter
-        if (path.startsWith("/api/auth")) return true;
-
-        return false;
+        // Ikke filtrer auth-endepunkter
+        return path.startsWith("/api/auth");
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+
+        // ✅ failsafe: aldri kjør auth-filter på /api/auth uansett
+        String path = request.getServletPath();
+        if (path != null && path.startsWith("/api/auth")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         String token = readCookie(request, "SESSION");
 
@@ -67,7 +72,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception ignored) {
-            // Hvis token er ugyldig -> ingen auth, SecurityConfig bestemmer om det blir 401
+            // Ugyldig token -> bare ikke sett auth, la SecurityConfig håndtere resten
         }
 
         filterChain.doFilter(request, response);

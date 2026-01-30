@@ -1,5 +1,6 @@
 package com.example.jobtracker.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -15,38 +16,22 @@ public class MailgunClient {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    /**
-     * baseUrl eksempel:
-     *  - https://api.mailgun.net
-     *  - https://api.eu.mailgun.net   (EU region)
-     */
-    public void sendEmail(String baseUrl,
-                          String apiKey,
-                          String domain,
-                          String from,
-                          String to,
-                          String subject,
-                          String text) {
+    @Value("${MAILGUN_API_KEY}")
+    private String apiKey;
 
-        // fallback hvis baseUrl ikke er satt
-        String effectiveBaseUrl = (baseUrl == null || baseUrl.isBlank())
-                ? "https://api.mailgun.net"
-                : baseUrl.trim();
+    @Value("${MAILGUN_DOMAIN}")
+    private String domain;
 
-        // sørg for at baseUrl ikke ender med /
-        if (effectiveBaseUrl.endsWith("/")) {
-            effectiveBaseUrl = effectiveBaseUrl.substring(0, effectiveBaseUrl.length() - 1);
-        }
+    @Value("${MAILGUN_BASE_URL}")
+    private String baseUrl;
 
-        String url = effectiveBaseUrl + "/v3/" + domain + "/messages";
+    public void sendEmail(String from, String to, String subject, String text) {
+
+        String url = baseUrl + "/v3/" + domain + "/messages";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-
-        // Basic auth: username=api, password=apiKey
-        String basic = "api:" + apiKey;
-        String encoded = Base64.getEncoder().encodeToString(basic.getBytes(StandardCharsets.UTF_8));
-        headers.set("Authorization", "Basic " + encoded);
+        headers.set("Authorization", basicAuth("api", apiKey));
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("from", from);
@@ -54,21 +39,32 @@ public class MailgunClient {
         form.add("subject", subject);
         form.add("text", text);
 
-        HttpEntity<MultiValueMap<String, String>> req = new HttpEntity<>(form, headers);
+        HttpEntity<MultiValueMap<String, String>> request =
+                new HttpEntity<>(form, headers);
 
         try {
-            ResponseEntity<String> res = restTemplate.exchange(url, HttpMethod.POST, req, String.class);
+            ResponseEntity<String> response =
+                    restTemplate.postForEntity(url, request, String.class);
 
-            if (!res.getStatusCode().is2xxSuccessful()) {
-                throw new RuntimeException("Mailgun failed: HTTP " + res.getStatusCode() + " body=" + res.getBody());
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                throw new RuntimeException(
+                        "Mailgun failed: HTTP " + response.getStatusCode() +
+                                " body=" + response.getBody()
+                );
             }
-        } catch (HttpStatusCodeException e) {
-            // ✅ dette er det du prøvde å gjøre: raw status + body
-            throw new RuntimeException(
-                    "Mailgun error: HTTP " + e.getStatusCode().value() + " body=" + e.getResponseBodyAsString());
 
-        } catch (Exception e) {
-            throw new RuntimeException("Mailgun request failed: " + e.getMessage(), e);
+        } catch (HttpStatusCodeException e) {
+            throw new RuntimeException(
+                    "Mailgun error: HTTP " + e.getStatusCode() +
+                            " body=" + e.getResponseBodyAsString(),
+                    e
+            );
         }
+    }
+
+    private String basicAuth(String user, String pass) {
+        String token = user + ":" + pass;
+        return "Basic " + Base64.getEncoder()
+                .encodeToString(token.getBytes(StandardCharsets.UTF_8));
     }
 }

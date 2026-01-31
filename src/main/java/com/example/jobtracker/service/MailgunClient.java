@@ -16,53 +16,20 @@ public class MailgunClient {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
+    // Render env vars kan leses via ${...} når du kjører på Spring Boot
     @Value("${MAILGUN_API_KEY:}")
     private String apiKey;
 
     @Value("${MAILGUN_DOMAIN:}")
     private String domain;
 
-    @Value("${MAILGUN_BASE_URL:https://api.mailgun.net}")
+    // eks: https://api.eu.mailgun.net  (EU)  eller https://api.mailgun.net (US)
+    @Value("${MAILGUN_BASE_URL:https://api.eu.mailgun.net}")
     private String baseUrl;
 
-    public void sendEmail(String from, String to, String subject, String text) {
-
-        require(apiKey, "MAILGUN_API_KEY");
-        require(domain, "MAILGUN_DOMAIN");
-        require(baseUrl, "MAILGUN_BASE_URL");
-        require(from, "MAIL_FROM");
-
-        String cleanBase = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-        String url = cleanBase + "/v3/" + domain + "/messages";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-        headers.set("Authorization", basicAuth("api", apiKey));
-
-        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-        form.add("from", from);
-        form.add("to", to);
-        form.add("subject", subject);
-        form.add("text", text);
-
-        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(form, headers);
-
-        try {
-            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
-
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new RuntimeException("Mailgun failed: HTTP " + response.getStatusCode() + " body=" + response.getBody());
-            }
-
-        } catch (HttpStatusCodeException e) {
-            throw new RuntimeException(
-                    "Mailgun error: HTTP " + e.getStatusCode() + " body=" + e.getResponseBodyAsString(),
-                    e
-            );
-        } catch (Exception e) {
-            throw new RuntimeException("Mailgun request failed: " + e.getMessage(), e);
-        }
-    }
+    // eks: Jobbsøker-tracker <postmaster@sandboxXXXX.mailgun.org>
+    @Value("${MAIL_FROM:}")
+    private String fromDefault;
 
     private void require(String value, String name) {
         if (value == null || value.isBlank()) {
@@ -70,9 +37,81 @@ public class MailgunClient {
         }
     }
 
-    private String basicAuth(String user, String pass) {
+    /**
+     * Send mail via Mailgun.
+     * @param to      mottaker
+     * @param subject subject
+     * @param text    plain text body
+     */
+    public void sendEmail(String to, String subject, String text) {
+        sendEmail(fromDefault, to, subject, text);
+    }
+
+    /**
+     * Send mail via Mailgun med custom from.
+     */
+    public void sendEmail(String from, String to, String subject, String text) {
+
+        // Validate config
+        require(apiKey, "MAILGUN_API_KEY");
+        require(domain, "MAILGUN_DOMAIN");
+        require(baseUrl, "MAILGUN_BASE_URL");
+        require(from, "MAIL_FROM");
+        require(to, "TO");
+
+        String url = normalizeBaseUrl(baseUrl) + "/v3/" + domain + "/messages";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        headers.set(HttpHeaders.AUTHORIZATION, basicAuthHeader("api", apiKey));
+
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("from", from);
+        form.add("to", to);
+        form.add("subject", subject);
+        form.add("text", text);
+
+        HttpEntity<MultiValueMap<String, String>> req = new HttpEntity<>(form, headers);
+
+        try {
+            ResponseEntity<String> res = restTemplate.exchange(url, HttpMethod.POST, req, String.class);
+
+            // ✅ Render logs
+            System.out.println("MAILGUN URL: " + url);
+            System.out.println("MAILGUN STATUS: " + res.getStatusCode());
+            System.out.println("MAILGUN BODY: " + (res.getBody() == null ? "" : res.getBody()));
+
+            if (!res.getStatusCode().is2xxSuccessful()) {
+                throw new RuntimeException("Mailgun failed: HTTP " + res.getStatusCode()
+                        + " body=" + res.getBody());
+            }
+
+        } catch (HttpStatusCodeException e) {
+            // ✅ Render logs
+            System.err.println("MAILGUN URL: " + url);
+            System.err.println("MAILGUN ERROR STATUS: " + e.getStatusCode());
+            System.err.println("MAILGUN ERROR BODY: " + e.getResponseBodyAsString());
+
+            throw new RuntimeException("Mailgun error: HTTP " + e.getStatusCode()
+                    + " body=" + e.getResponseBodyAsString(), e);
+
+        } catch (Exception e) {
+            // ✅ Render logs
+            System.err.println("MAILGUN URL: " + url);
+            System.err.println("MAILGUN REQUEST FAILED: " + e.getMessage());
+            throw new RuntimeException("Mailgun request failed: " + e.getMessage(), e);
+        }
+    }
+
+    private String normalizeBaseUrl(String base) {
+        String b = base.trim();
+        while (b.endsWith("/")) b = b.substring(0, b.length() - 1);
+        return b;
+    }
+
+    private String basicAuthHeader(String user, String pass) {
         String token = user + ":" + pass;
-        return "Basic " + Base64.getEncoder()
-                .encodeToString(token.getBytes(StandardCharsets.UTF_8));
+        String encoded = Base64.getEncoder().encodeToString(token.getBytes(StandardCharsets.UTF_8));
+        return "Basic " + encoded;
     }
 }

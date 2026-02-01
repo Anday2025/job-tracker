@@ -62,7 +62,7 @@ const T = {
     all: "Alle",
 
     // auth extras
-    forgotPassword: "Forgot password?",
+    forgotPassword: "Glemt passord?",
     resendVerification: "Resend verification",
     send: "Send",
     back: "Tilbake",

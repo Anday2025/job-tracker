@@ -1,3 +1,11 @@
+/* styles.css — fullstendig (med roterende bakgrunnsbilde) */
+
+/* ✅ Sakte 360° rotasjon (subtil, “premium”) */
+@keyframes slowRotate {
+  from { transform: rotate(0deg) scale(1.1); }
+  to   { transform: rotate(360deg) scale(1.1); }
+}
+
 :root {
   /* Deep blue background fallback */
   --bg: #0b1230;
@@ -27,47 +35,64 @@
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 
+/* ✅ Roterende bakgrunnsbilde (legg filen i: static/images/network-bg.png) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -40%; /*  gjør laget større enn skjermen for å dekke hjørnene under rotasjon */
+
+  background-image: url("bilder/verden.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  transform-origin: center;
+  animation: slowRotate 180s linear infinite;
+
+  opacity: 0.35;
+  z-index: -2;
+  will-change: transform;
+}
+
+
+/* ✅ Mobil: slå av animasjon (bedre batteri / ytelse) */
+@media (max-width: 768px) {
+  body::before {
+    animation: none;
+    opacity: 0.25;
+  }
+}
+
 body {
   margin: 0;
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
   color: var(--text);
 
-  /*
-    ✅ Background: overlay + image + your existing glows
-    Image location (Spring Boot): src/main/resources/static/images/network-bg.png
-  */
+  /* ✅ Overlay + fallback gradients over rotasjonen */
   background:
-    /* Dark overlay for readability */
           linear-gradient(rgba(11,18,48,0.82), rgba(8,16,42,0.86)),
-
-            /* Background image */
-          url("bilder/nettverk.png"),
-
-            /* Your premium glows */
           radial-gradient(1100px 560px at 15% 10%, rgba(59,130,246,0.22), transparent 62%),
           radial-gradient(900px 520px at 85% 10%, rgba(124,58,237,0.18), transparent 62%),
           radial-gradient(900px 520px at 50% 120%, rgba(6,182,212,0.16), transparent 62%),
           linear-gradient(180deg, var(--bg), var(--bg2));
 
-  background-size: cover, cover, auto, auto, auto, auto;
-  background-position: center, center, 15% 10%, 85% 10%, 50% 120%, center;
   background-repeat: no-repeat;
   background-attachment: fixed;
 }
 
-/* Premium glow overlay (extra) */
+/* Premium glow overlay */
 .bgGlow {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
+  z-index: -1; /* over roterende bilde, under innhold */
   background:
           radial-gradient(900px 380px at 20% 100%, rgba(255,180,0,0.08), transparent 60%),
           radial-gradient(900px 380px at 80% 100%, rgba(59,130,246,0.10), transparent 62%);
   opacity: 0.95;
 }
 
-/* Ensure content is above background layers */
+/* Sørg for at innhold alltid ligger over bg */
 header, main, footer {
   position: relative;
   z-index: 1;
@@ -121,6 +146,7 @@ header, main, footer {
   box-shadow: var(--shadowSoft);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
@@ -166,9 +192,7 @@ input, select {
   transition: 0.15s ease;
 }
 
-input::placeholder {
-  color: rgba(255,255,255,0.45);
-}
+input::placeholder { color: rgba(255,255,255,0.45); }
 
 input:focus, select:focus {
   border-color: rgba(59,130,246,0.55);
@@ -391,13 +415,13 @@ input:focus, select:focus {
   .modalActions { grid-template-columns: 1fr; }
 }
 
-.modalLinks {
-  display: flex;
-  justify-content: space-between;
+.modalLinks{
+  display:flex;
+  justify-content:space-between;
   margin-top: 6px;
 }
 
-.linkBtn {
+.linkBtn{
   background: none;
   border: none;
   padding: 6px 0;
@@ -406,4 +430,6 @@ input:focus, select:focus {
   font-weight: 900;
 }
 
-.linkBtn:hover { text-decoration: underline; }
+.linkBtn:hover{
+  text-decoration: underline;
+}

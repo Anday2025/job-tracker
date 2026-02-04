@@ -1,5 +1,5 @@
 :root {
-  /* Deep blue background */
+  /* Deep blue background fallback */
   --bg: #0b1230;
   --bg2: #08102a;
 
@@ -32,23 +32,45 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
   color: var(--text);
 
-  /* Deep premium background */
+  /*
+    ✅ Background: overlay + image + your existing glows
+    Image location (Spring Boot): src/main/resources/static/images/network-bg.png
+  */
   background:
+    /* Dark overlay for readability */
+          linear-gradient(rgba(11,18,48,0.82), rgba(8,16,42,0.86)),
+
+            /* Background image */
+          url("bilder/nettverk.png"),
+
+            /* Your premium glows */
           radial-gradient(1100px 560px at 15% 10%, rgba(59,130,246,0.22), transparent 62%),
           radial-gradient(900px 520px at 85% 10%, rgba(124,58,237,0.18), transparent 62%),
           radial-gradient(900px 520px at 50% 120%, rgba(6,182,212,0.16), transparent 62%),
           linear-gradient(180deg, var(--bg), var(--bg2));
+
+  background-size: cover, cover, auto, auto, auto, auto;
+  background-position: center, center, 15% 10%, 85% 10%, 50% 120%, center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
-/* Premium glow overlay */
+/* Premium glow overlay (extra) */
 .bgGlow {
   position: fixed;
   inset: 0;
   pointer-events: none;
+  z-index: 0;
   background:
           radial-gradient(900px 380px at 20% 100%, rgba(255,180,0,0.08), transparent 60%),
           radial-gradient(900px 380px at 80% 100%, rgba(59,130,246,0.10), transparent 62%);
   opacity: 0.95;
+}
+
+/* Ensure content is above background layers */
+header, main, footer {
+  position: relative;
+  z-index: 1;
 }
 
 .container {
@@ -70,9 +92,7 @@ body {
   letter-spacing: 0.3px;
 }
 
-.brand p {
-  margin: 6px 0 0 0;
-}
+.brand p { margin: 6px 0 0 0; }
 
 .headerRight {
   display: flex;
@@ -92,7 +112,7 @@ body {
   .grid { grid-template-columns: 1fr; }
 }
 
-/* ✅ Premium glass cards */
+/* Glass cards */
 .card {
   background: linear-gradient(180deg, var(--card2), var(--card));
   border: 1px solid var(--border);
@@ -101,11 +121,9 @@ body {
   box-shadow: var(--shadowSoft);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
 
-/* Small hover animation */
 .card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow);
@@ -135,7 +153,7 @@ body {
   margin-bottom: 6px;
 }
 
-/* ✅ Inputs - premium glass */
+/* Inputs */
 input, select {
   width: 100%;
   padding: 11px 12px;
@@ -178,9 +196,7 @@ input:focus, select:focus {
   background: rgba(255,255,255,0.12);
 }
 
-.btn:active {
-  transform: translateY(0px);
-}
+.btn:active { transform: translateY(0px); }
 
 .btn.primary {
   background: linear-gradient(135deg, var(--primary), var(--primary2));
@@ -193,9 +209,7 @@ input:focus, select:focus {
   box-shadow: 0 22px 40px rgba(124,58,237,0.26);
 }
 
-.btn.ghost {
-  background: rgba(255,255,255,0.06);
-}
+.btn.ghost { background: rgba(255,255,255,0.06); }
 
 /* Pills */
 .pill {
@@ -230,9 +244,7 @@ input:focus, select:focus {
   transition: 0.12s ease;
 }
 
-.filter:hover {
-  transform: translateY(-1px);
-}
+.filter:hover { transform: translateY(-1px); }
 
 .filter.active {
   background: rgba(6,182,212,0.14);
@@ -307,7 +319,7 @@ input:focus, select:focus {
 .hint { margin-top: 10px; }
 .hidden { display: none !important; }
 
-/* ✅ Modal premium */
+/* Modal */
 .modal {
   position: fixed;
   inset: 0;
@@ -327,7 +339,6 @@ input:focus, select:focus {
   box-shadow: 0 35px 90px rgba(0,0,0,0.55);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-
   animation: pop 0.22s ease;
 }
 
@@ -380,13 +391,13 @@ input:focus, select:focus {
   .modalActions { grid-template-columns: 1fr; }
 }
 
-.modalLinks{
-  display:flex;
-  justify-content:space-between;
+.modalLinks {
+  display: flex;
+  justify-content: space-between;
   margin-top: 6px;
 }
 
-.linkBtn{
+.linkBtn {
   background: none;
   border: none;
   padding: 6px 0;
@@ -395,6 +406,4 @@ input:focus, select:focus {
   font-weight: 900;
 }
 
-.linkBtn:hover{
-  text-decoration: underline;
-}
+.linkBtn:hover { text-decoration: underline; }

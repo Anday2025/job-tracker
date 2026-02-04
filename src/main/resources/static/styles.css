@@ -1,38 +1,46 @@
+/* Updated CSS — indigo + purple premium palette + status tokens
+   - Primary palette: indigo -> purple
+   - Stronger accents and status colors added as variables
+   - Replaced hard-coded blues with variable-driven colors
+*/
 :root {
   /* Background */
-  --bg: #0f172a;   /* dyp blågrå */
-  --bg2: #1e1b4b;  /* indigo-ish bottom */
+  --bg: #0f172a; /* deep navy/indigo */
+  --bg2: #1e1b4b; /* deep indigo purple */
 
   /* Glass cards */
-  --card: rgba(255, 255, 255, 0.09);
-  --card2: rgba(255, 255, 255, 0.12);
+  --card: rgba(255, 255, 255, 0.10);
+  --card2: rgba(255, 255, 255, 0.14);
   --border: rgba(255, 255, 255, 0.14);
 
   /* Text */
-  --text: rgba(255, 255, 255, 0.95);
-  --muted: rgba(255, 255, 255, 0.66);
-  --placeholder: rgba(255,255,255,0.50);
+  --text: rgba(255, 255, 255, 0.96);
+  --muted: rgba(255, 255, 255, 0.64);
 
-  /* Accent colors (new palette: indigo -> purple + cyan accent) */
-  --primary: #6366F1;   /* indigo (CTA / valgt) */
-  --primary2: #A855F7;  /* lilla (gradient slutt) */
-  --accent: #06B6D4;    /* cyan / teal aksent */
+  /* Accent colors (palette) */
+  --primary: #6366F1;   /* indigo */
+  --primary2: #A855F7;  /* vivid purple */
+  --accent: #06B6D4;    /* cyan for small highlights */
 
-  /* Status colors (brukes for chips/badges) */
-  --status-planned: #38BDF8; /* lys blå */
-  --status-applied: #6366F1; /* indigo */
-  --status-interview: #FACC15; /* gul */
-  --status-offer: #22C55E; /* grønn */
-  --status-rejected: #EF4444; /* rød */
+  /* rgb helpers for glows/shadows */
+  --primary-rgb: 99,102,241;
+  --primary2-rgb: 168,85,247;
+  --accent-rgb: 6,182,212;
+
+  /* Status tokens */
+  --status-planned: #38BDF8;   /* planlagt */
+  --status-applied: #6366F1;   /* søkt */
+  --status-interview: #FACC15; /* intervju */
+  --status-offer: #22C55E;     /* tilbud */
+  --status-rejected: #EF4444;  /* avslått */
 
   /* Shadows */
-  --shadow: 0 22px 70px rgba(0, 0, 0, 0.55);
-  --shadowSoft: 0 18px 40px rgba(0, 0, 0, 0.28);
+  --shadow: 0 22px 70px rgba(0, 0, 0, 0.45);
+  --shadowSoft: 0 18px 40px rgba(0, 0, 0, 0.25);
 
   --radius: 18px;
 }
 
-/* --- Keep rest mostly same, but switch hardcoded colors to use vars --- */
 * { box-sizing: border-box; }
 html, body { height: 100%; }
 
@@ -41,15 +49,15 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
   color: var(--text);
 
-  /* Background with indigo / purple / cyan accents */
+  /* Background with subtle indigo/purple radiants */
   background:
-          radial-gradient(1100px 560px at 15% 10%, rgba(99,102,241,0.18), transparent 62%),
-          radial-gradient(900px 520px at 85% 10%, rgba(168,85,247,0.14), transparent 62%),
-          radial-gradient(900px 520px at 50% 120%, rgba(6,182,212,0.12), transparent 62%),
+          radial-gradient(1100px 560px at 15% 10%, rgba(var(--primary-rgb),0.15), transparent 62%),
+          radial-gradient(900px 520px at 85% 10%, rgba(var(--primary2-rgb),0.12), transparent 62%),
+          radial-gradient(900px 520px at 50% 120%, rgba(var(--accent-rgb),0.10), transparent 62%),
           linear-gradient(180deg, var(--bg), var(--bg2));
 }
 
-/* Premium glow overlay */
+/* Premium glow overlay — tuned to new palette */
 .bgGlow {
   position: fixed;
   inset: 0;
@@ -73,29 +81,15 @@ body {
   padding: 22px 0;
 }
 
-.brand h1 {
-  margin: 0;
-  font-size: 28px;
-  letter-spacing: 0.3px;
-}
-
+.brand h1 { margin: 0; font-size: 28px; letter-spacing: 0.3px; }
 .brand p { margin: 6px 0 0 0; }
-
 .headerRight { display: flex; align-items: center; gap: 10px; }
 
 /* Layout grid */
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1.25fr;
-  gap: 18px;
-  padding: 14px 0 26px;
-}
+.grid { display: grid; grid-template-columns: 1fr 1.25fr; gap: 18px; padding: 14px 0 26px; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
 
-@media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
-}
-
-/* Cards */
+/* Glass cards */
 .card {
   background: linear-gradient(180deg, var(--card2), var(--card));
   border: 1px solid var(--border);
@@ -106,27 +100,17 @@ body {
   -webkit-backdrop-filter: blur(16px);
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
+.card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: rgba(255,255,255,0.20); }
 
-.card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow);
-  border-color: rgba(255,255,255,0.22);
-}
-
-.row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
 
-/* Form labels */
-.form label { display:block; margin:12px 0; }
-.form label span {
-  display:block;
-  font-size:13px;
-  color: var(--muted);
-  margin-bottom:6px;
-}
+/* Form */
+.form label { display: block; margin: 12px 0; }
+.form label span { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
 
-/* Inputs - use variable for focus glow */
+/* Inputs - tuned focus to primary */
 input, select {
   width: 100%;
   padding: 11px 12px;
@@ -138,20 +122,19 @@ input, select {
   box-shadow: 0 10px 22px rgba(0,0,0,0.18);
   transition: 0.15s ease;
 }
-
-input::placeholder { color: var(--placeholder); }
+input::placeholder { color: rgba(255,255,255,0.45); }
 
 input:focus, select:focus {
-  border-color: color-mix(in srgb, var(--primary) 50%, white 10%);
+  border-color: rgba(var(--primary-rgb),0.65);
   box-shadow:
-          0 12px 26px rgba(99,102,241,0.16),
-          0 0 0 4px rgba(99,102,241,0.12);
+          0 12px 26px rgba(var(--primary-rgb),0.14),
+          0 0 0 6px rgba(var(--primary-rgb),0.10);
 }
 
 /* Buttons */
 .btn {
   border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.08);
   color: var(--text);
   padding: 10px 12px;
   border-radius: 14px;
@@ -160,48 +143,27 @@ input:focus, select:focus {
   box-shadow: 0 12px 22px rgba(0,0,0,0.22);
   transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
 }
-
-.btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 26px rgba(0,0,0,0.30);
-  background: rgba(255,255,255,0.10);
-}
-
+.btn:hover { transform: translateY(-1px); box-shadow: 0 16px 26px rgba(0,0,0,0.30); background: rgba(255,255,255,0.12); }
 .btn:active { transform: translateY(0px); }
 
-/* Primary gradient uses new palette */
 .btn.primary {
   background: linear-gradient(135deg, var(--primary), var(--primary2));
-  border-color: rgba(99,102,241,0.45);
+  border-color: rgba(var(--primary-rgb),0.45);
   color: #fff;
-  box-shadow: 0 18px 34px rgba(99,102,241,0.18);
+  box-shadow: 0 18px 34px rgba(var(--primary-rgb),0.14);
 }
+.btn.primary:hover { box-shadow: 0 22px 40px rgba(var(--primary2-rgb),0.18); }
 
-.btn.primary:hover {
-  box-shadow: 0 22px 40px rgba(168,85,247,0.22);
-}
-
-.btn.ghost { background: rgba(255,255,255,0.04); }
+.btn.ghost { background: rgba(255,255,255,0.06); }
 
 /* Pills */
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 999px;
-  background: rgba(0,0,0,0.18);
-  font-size: 13px;
-  box-shadow: 0 12px 22px rgba(0,0,0,0.18);
-}
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; background: rgba(0,0,0,0.18); font-size: 13px; box-shadow: 0 12px 22px rgba(0,0,0,0.18); }
 
 /* Filters */
-.filters { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 14px; }
-
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
 .filter {
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
   color: var(--text);
   padding: 8px 10px;
   border-radius: 999px;
@@ -210,89 +172,39 @@ input:focus, select:focus {
   box-shadow: 0 12px 18px rgba(0,0,0,0.18);
   transition: 0.12s ease;
 }
-
 .filter:hover { transform: translateY(-1px); }
 
 .filter.active {
-  background: linear-gradient(180deg, rgba(6,182,212,0.12), rgba(99,102,241,0.06));
-  border-color: rgba(6,182,212,0.32);
-  box-shadow: 0 16px 28px rgba(6,182,212,0.08);
+  background: rgba(var(--primary-rgb),0.12);
+  border-color: rgba(var(--primary-rgb),0.28);
+  box-shadow: 0 16px 28px rgba(var(--primary-rgb),0.08);
 }
 
 /* List items */
-.list { display:grid; gap:10px; }
+.list { display: grid; gap: 10px; }
+.item { border: 1px solid rgba(255,255,255,0.12); background: rgba(0,0,0,0.18); border-radius: 16px; padding: 12px; box-shadow: 0 16px 30px rgba(0,0,0,0.22); transition: transform 0.14s ease, box-shadow 0.14s ease; }
+.item:hover { transform: translateY(-2px); box-shadow: 0 22px 40px rgba(0,0,0,0.30); }
 
-.item {
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(0,0,0,0.18);
-  border-radius: 16px;
-  padding: 12px;
-  box-shadow: 0 16px 30px rgba(0,0,0,0.22);
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-}
-
-.item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 22px 40px rgba(0,0,0,0.30);
-}
-
-/* Overdue uses status color var */
 .item.overdue {
   border-color: rgba(239,68,68,0.45);
-  box-shadow: 0 18px 32px rgba(239,68,68,0.12);
+  box-shadow: 0 18px 32px rgba(239,68,68,0.10);
 }
 
-.top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.title { font-weight: 900; margin-bottom: 6px; letter-spacing: 0.1px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
 
-.title {
-  font-weight: 900;
-  margin-bottom: 6px;
-  letter-spacing: 0.1px;
-}
+.badge { border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; padding: 4px 8px; background: rgba(255,255,255,0.06); }
 
-.meta {
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  align-items:center;
-  color: var(--muted);
-  font-size:13px;
-}
-
-.badge {
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 999px;
-  padding: 4px 8px;
-  background: rgba(255,255,255,0.04);
-  font-weight: 800;
-  font-size: 13px;
-}
-
-/* Example utility classes for status badges */
-.badge.planned { background: linear-gradient(180deg, rgba(56,189,248,0.06), rgba(56,189,248,0.03)); border-color: rgba(56,189,248,0.25); color: var(--status-planned); }
-.badge.applied { background: linear-gradient(180deg, rgba(99,102,241,0.06), rgba(99,102,241,0.03)); border-color: rgba(99,102,241,0.25); color: var(--status-applied); }
-.badge.interview { background: linear-gradient(180deg, rgba(250,204,21,0.06), rgba(250,204,21,0.03)); border-color: rgba(250,204,21,0.25); color: var(--status-interview); }
-.badge.offer { background: linear-gradient(180deg, rgba(34,197,94,0.06), rgba(34,197,94,0.03)); border-color: rgba(34,197,94,0.25); color: var(--status-offer); }
-.badge.rejected { background: linear-gradient(180deg, rgba(239,68,68,0.06), rgba(239,68,68,0.03)); border-color: rgba(239,68,68,0.25); color: var(--status-rejected); }
-
-.actions { display:flex; gap:8px; align-items:center; }
-
-.msg { margin-top:10px; font-size:14px; color: var(--muted); }
+.actions { display: flex; gap: 8px; align-items: center; }
+.msg { margin-top: 10px; font-size: 14px; color: var(--muted); }
 .msg.ok { color: rgba(120,255,160,0.95); }
 
 .hint { margin-top: 10px; }
 .hidden { display: none !important; }
 
 /* Modal */
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  z-index: 999;
-}
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: grid; place-items: center; padding: 16px; z-index: 999; }
 
 .modalCard {
   width: min(460px, 100%);
@@ -306,31 +218,26 @@ input:focus, select:focus {
   animation: pop 0.22s ease;
 }
 
-@keyframes pop {
-  from { transform: translateY(10px) scale(0.98); opacity: 0.6; }
-  to   { transform: translateY(0px) scale(1); opacity: 1; }
-}
+@keyframes pop { from { transform: translateY(10px) scale(0.98); opacity: 0.6; } to { transform: translateY(0px) scale(1); opacity: 1; } }
 
-.modalTop { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+.modalTop { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.modalTop h3 { margin: 0; font-size: 18px; font-weight: 900; }
 
-.modalTop h3 { margin:0; font-size:18px; font-weight:900; }
-
-.iconBtn {
-  width:38px; height:38px; border-radius:14px; border:1px solid rgba(255,255,255,0.16);
-  background: rgba(255,255,255,0.10); color: var(--text); cursor:pointer; font-size:18px;
-  box-shadow: 0 16px 26px rgba(0,0,0,0.30); transition:0.12s ease;
-}
-
+.iconBtn { width: 38px; height: 38px; border-radius: 14px; border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.10); color: var(--text); cursor: pointer; font-size: 18px; box-shadow: 0 16px 26px rgba(0,0,0,0.30); transition: 0.12s ease; }
 .iconBtn:hover { transform: translateY(-1px); background: rgba(255,255,255,0.14); }
 
-.modalForm { display:grid; gap:10px; }
+.modalForm { display: grid; gap: 10px; }
+.modalActions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 420px) { .modalActions { grid-template-columns: 1fr; } }
 
-.modalActions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-@media (max-width:420px) { .modalActions { grid-template-columns:1fr; } }
+.modalLinks{ display:flex; justify-content:space-between; margin-top: 6px; }
 
-.modalLinks{ display:flex; justify-content:space-between; margin-top:6px; }
-
-.linkBtn{
-  background:none; border:none; padding:6px 0; cursor:pointer; color: var(--accent); font-weight:900;
-}
+.linkBtn{ background: none; border: none; padding: 6px 0; cursor: pointer; color: rgba(var(--accent-rgb),0.95); font-weight: 900; }
 .linkBtn:hover{ text-decoration: underline; }
+
+/* small helpers for status badges (optional) */
+.badge.planned { background: rgba(56,189,248,0.10); border-color: rgba(56,189,248,0.18); color: var(--status-planned); }
+.badge.applied { background: rgba(99,102,241,0.10); border-color: rgba(99,102,241,0.18); color: var(--status-applied); }
+.badge.interview { background: rgba(250,204,21,0.10); border-color: rgba(250,204,21,0.18); color: var(--status-interview); }
+.badge.offer { background: rgba(34,197,94,0.10); border-color: rgba(34,197,94,0.18); color: var(--status-offer); }
+.badge.rejected { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.14); color: var(--status-rejected); }

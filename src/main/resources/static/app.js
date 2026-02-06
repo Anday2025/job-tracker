@@ -35,7 +35,7 @@ const state = {
 // =========================
 const T = {
   no: {
-    title: "Jobbsøker-tracker",
+    title: "jobbsokertracking",
     subtitle: "Hold oversikt over søknadene dine.",
     login: "Logg inn",
     logout: "Logg ut",
@@ -77,7 +77,7 @@ const T = {
     resetOk: "Passord er oppdatert. Du kan logge inn nå.",
   },
   en: {
-    title: "Job tracker",
+    title: "Job application tracking",
     subtitle: "Keep track of your applications.",
     login: "Sign in",
     logout: "Sign out",

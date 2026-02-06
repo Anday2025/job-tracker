@@ -12,7 +12,7 @@ public class MailService {
     }
 
     public void sendVerificationEmail(String to, String link) {
-        String subject = "Bekreft e-post for Jobbsøker-tracker";
+        String subject = "Bekreft e-post for jobbsokertracking";
         String text = """
                 Hei!
 
@@ -20,14 +20,14 @@ public class MailService {
                 %s
 
                 Hilsen
-                Jobbsøker-tracker
+                jobbsokertracking
                 """.formatted(link);
 
         mailgunClient.sendEmail(to, subject, text);
     }
 
     public void sendResetPasswordEmail(String to, String link) {
-        String subject = "Reset passord – Jobbsøker-tracker";
+        String subject = "Reset passord – jobbsokertracking";
         String text = """
                 Hei!
 
@@ -37,14 +37,14 @@ public class MailService {
                 Hvis du ikke ba om dette, kan du ignorere e-posten.
 
                 Hilsen
-                Jobbsøker-tracker
+                jobbsokertracking
                 """.formatted(link);
 
         mailgunClient.sendEmail(to, subject, text);
     }
 
     public void sendPasswordChangedEmail(String to) {
-        String subject = "Passord endret – Jobbsøker-tracker";
+        String subject = "Passord endret – jobbsokertracking";
         String text = """
                 Hei!
 
@@ -52,7 +52,7 @@ public class MailService {
                 Hvis dette ikke var deg, anbefaler vi at du reseter passordet umiddelbart.
 
                 Hilsen
-                Jobbsøker-tracker
+                jobbsokertracking
                 """;
 
         mailgunClient.sendEmail(to, subject, text);

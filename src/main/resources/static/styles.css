@@ -424,7 +424,6 @@ input:focus, select:focus {
 
 .modalForm { display: grid; gap: 10px; }
 
-
 .modalActions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -449,7 +448,6 @@ input:focus, select:focus {
   color: rgba(6,182,212,0.95);
   font-weight: 900;
 }
-
 
 .linkBtn:hover{
   text-decoration: underline;

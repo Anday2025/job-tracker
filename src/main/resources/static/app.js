@@ -61,6 +61,7 @@ const T = {
     offer: "Tilbud",
     all: "Alle",
 
+
     // auth extras
     forgotPassword: "Glemt passord?",
     resendVerification: "Resend verification",

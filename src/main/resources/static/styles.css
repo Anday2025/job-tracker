@@ -424,6 +424,7 @@ input:focus, select:focus {
 
 .modalForm { display: grid; gap: 10px; }
 
+
 .modalActions {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -1,55 +1,75 @@
-/* styles.css — iPhone-stabil: samme farge PC + mobil (ingen lysning ved scroll) */
+/* ================================
+   STYLES.CSS — STABIL PC + iPHONE
+   Rotasjon + samme farge overalt
+================================ */
 
-/* ✅ Sakte 360° rotasjon */
-@keyframes slowRotate {
-  from { transform: rotate(0deg) scale(1.12); }
-  to   { transform: rotate(360deg) scale(1.12); }
+/* ================================
+   ANIMASJON (iOS-sikker)
+================================ */
+
+@-webkit-keyframes slowRotate {
+  from { -webkit-transform: translate3d(0,0,0) rotate(0deg) scale(1.12); }
+  to   { -webkit-transform: translate3d(0,0,0) rotate(360deg) scale(1.12); }
 }
 
+@keyframes slowRotate {
+  from { transform: translate3d(0,0,0) rotate(0deg) scale(1.12); }
+  to   { transform: translate3d(0,0,0) rotate(360deg) scale(1.12); }
+}
+
+/* ================================
+   ROOT VARIABLER
+================================ */
+
 :root {
-  /* Base */
   --bg: #0b1230;
   --bg2: #08102a;
 
-  /* Glass */
   --card: rgba(255,255,255,0.10);
   --card2: rgba(255,255,255,0.14);
   --border: rgba(255,255,255,0.14);
 
-  /* Text */
   --text: rgba(255,255,255,0.92);
   --muted: rgba(255,255,255,0.62);
 
-  /* Accent */
   --primary: #3b82f6;
   --primary2: #7c3aed;
   --accent: #06b6d4;
 
-  /* Shadows */
   --shadow: 0 22px 70px rgba(0,0,0,0.45);
   --shadowSoft: 0 18px 40px rgba(0,0,0,0.25);
 
   --radius: 18px;
 }
 
-* { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; }
-html, body { overflow-x: hidden; }
+/* ================================
+   BASE
+================================ */
 
-/* ✅ Viktig: stabil basefarge (hindrer “lysning” ved scroll på iOS) */
-html { background: linear-gradient(180deg, var(--bg), var(--bg2)); }
-body {
-  min-height: 100svh; /* iPhone-friendly */
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-  color: var(--text);
-  background-color: var(--bg); /* stabil under alle lag */
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow-x: hidden;
 }
 
-/* -------------------------------------------------------
-   ✅ Bakgrunn flyttet til HTML-lag (mest stabilt på iPhone)
--------------------------------------------------------- */
+html {
+  background: linear-gradient(180deg, var(--bg), var(--bg2));
+}
 
-/* Roterende bilde-lag */
+body {
+  min-height: 100svh;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  color: var(--text);
+  background-color: var(--bg);
+}
+
+/* ================================
+   BAKGRUNNSLAG (mest stabil løsning)
+================================ */
+
+/* Roterende bilde */
 html::before {
   content: "";
   position: fixed;
@@ -63,15 +83,15 @@ html::before {
   background-repeat: no-repeat;
 
   transform-origin: center;
-  animation: slowRotate 180s linear infinite;
-  opacity: 0.38;
 
-  /* iOS-kompositering (hindrer “bleking” ved scroll) */
-  transform: translateZ(0);
+  -webkit-animation: slowRotate 180s linear infinite;
+  animation: slowRotate 180s linear infinite;
+
+  opacity: 0.38;
   will-change: transform;
 }
 
-/* Overlay + glows (fast lag over bildet) */
+/* Overlay + glows */
 html::after {
   content: "";
   position: fixed;
@@ -80,44 +100,28 @@ html::after {
   pointer-events: none;
 
   background:
-    /* mørk overlay for lesbarhet */
           linear-gradient(rgba(11,18,48,0.82), rgba(8,16,42,0.86)),
-            /* glows */
           radial-gradient(1100px 560px at 15% 10%, rgba(59,130,246,0.22), transparent 62%),
           radial-gradient(900px 520px at 85% 10%, rgba(124,58,237,0.18), transparent 62%),
           radial-gradient(900px 520px at 50% 120%, rgba(6,182,212,0.16), transparent 62%);
 
-  opacity: 1;
-  transform: translateZ(0);
+  transform: translate3d(0,0,0);
 }
 
-/* ✅ Slå av animasjon kun hvis brukeren ønsker mindre bevegelse
-@media (prefers-reduced-motion: reduce) {
-  html::before { animation: none; }
-}
-*/
-/* Hvis du fortsatt vil ha egen ekstra glow-div (valgfritt) */
-.bgGlow {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -1;
-  background:
-          radial-gradient(900px 380px at 20% 100%, rgba(255,180,0,0.08), transparent 60%),
-          radial-gradient(900px 380px at 80% 100%, rgba(59,130,246,0.10), transparent 62%);
-  opacity: 0.95;
-  transform: translateZ(0);
-}
+/* ================================
+   LAYOUT
+================================ */
 
-/* Sørg for at innhold alltid ligger over bg */
-header, main, footer { position: relative; z-index: 1; }
+header, main, footer {
+  position: relative;
+  z-index: 1;
+}
 
 .container {
   width: min(1100px, calc(100% - 28px));
   margin: 0 auto;
 }
 
-/* Header */
 .header {
   display: flex;
   align-items: center;
@@ -128,23 +132,23 @@ header, main, footer { position: relative; z-index: 1; }
 .brand h1 {
   margin: 0;
   font-size: 28px;
-  letter-spacing: 0.3px;
 }
-.brand p { margin: 6px 0 0 0; }
-.headerRight { display: flex; align-items: center; gap: 10px; }
 
-/* Layout grid */
 .grid {
   display: grid;
   grid-template-columns: 1fr 1.25fr;
   gap: 18px;
   padding: 14px 0 26px;
 }
+
 @media (max-width: 900px) {
   .grid { grid-template-columns: 1fr; }
 }
 
-/* Glass cards */
+/* ================================
+   GLASS CARDS
+================================ */
+
 .card {
   background: linear-gradient(180deg, var(--card2), var(--card));
   border: 1px solid var(--border);
@@ -155,35 +159,18 @@ header, main, footer { position: relative; z-index: 1; }
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
 }
 
 .card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow);
-  border-color: rgba(255,255,255,0.20);
 }
 
-.row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
+/* ================================
+   FORM ELEMENTER
+================================ */
 
-.muted { color: var(--muted); }
-.small { font-size: 13px; }
-
-/* Form */
-.form label { display: block; margin: 12px 0; }
-.form label span {
-  display: block;
-  font-size: 13px;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-
-/* Inputs */
 input, select {
   width: 100%;
   padding: 11px 12px;
@@ -192,20 +179,16 @@ input, select {
   background: rgba(0,0,0,0.20);
   color: var(--text);
   outline: none;
-  box-shadow: 0 10px 22px rgba(0,0,0,0.18);
-  transition: 0.15s ease;
 }
-
-input::placeholder { color: rgba(255,255,255,0.45); }
 
 input:focus, select:focus {
   border-color: rgba(59,130,246,0.55);
-  box-shadow:
-          0 12px 26px rgba(59,130,246,0.16),
-          0 0 0 4px rgba(59,130,246,0.18);
 }
 
-/* Buttons */
+/* ================================
+   BUTTONS
+================================ */
+
 .btn {
   border: 1px solid rgba(255,255,255,0.14);
   background: rgba(255,255,255,0.08);
@@ -214,89 +197,33 @@ input:focus, select:focus {
   border-radius: 14px;
   cursor: pointer;
   font-weight: 800;
-  box-shadow: 0 12px 22px rgba(0,0,0,0.22);
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  transition: 0.12s ease;
 }
-.btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 16px 26px rgba(0,0,0,0.30);
-  background: rgba(255,255,255,0.12);
-}
-.btn:active { transform: translateY(0px); }
 
 .btn.primary {
   background: linear-gradient(135deg, var(--primary), var(--primary2));
   border-color: rgba(59,130,246,0.55);
   color: #fff;
-  box-shadow: 0 18px 34px rgba(59,130,246,0.20);
-}
-.btn.primary:hover { box-shadow: 0 22px 40px rgba(124,58,237,0.26); }
-.btn.ghost { background: rgba(255,255,255,0.06); }
-
-/* Pills */
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border: 1px solid rgba(255,255,255,0.14);
-  border-radius: 999px;
-  background: rgba(0,0,0,0.18);
-  font-size: 13px;
-  box-shadow: 0 12px 22px rgba(0,0,0,0.18);
 }
 
-/* Filters */
-.filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
-.filter {
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.06);
-  color: var(--text);
-  padding: 8px 10px;
-  border-radius: 999px;
-  cursor: pointer;
-  font-weight: 800;
-  box-shadow: 0 12px 18px rgba(0,0,0,0.18);
-  transition: 0.12s ease;
-}
-.filter:hover { transform: translateY(-1px); }
-.filter.active {
-  background: rgba(6,182,212,0.14);
-  border-color: rgba(6,182,212,0.35);
-  box-shadow: 0 16px 28px rgba(6,182,212,0.12);
-}
+/* ================================
+   LIST ITEMS
+================================ */
 
-/* List items */
 .list { display: grid; gap: 10px; }
+
 .item {
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(0,0,0,0.18);
   border-radius: 16px;
   padding: 12px;
   box-shadow: 0 16px 30px rgba(0,0,0,0.22);
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-}
-.item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 22px 40px rgba(0,0,0,0.30);
-}
-.item.overdue {
-  border-color: rgba(255,90,90,0.45);
-  box-shadow: 0 18px 32px rgba(255,90,90,0.12);
 }
 
-.top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.title { font-weight: 900; margin-bottom: 6px; letter-spacing: 0.1px; }
-.meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: var(--muted); font-size: 13px; }
-.badge { border: 1px solid rgba(255,255,255,0.12); border-radius: 999px; padding: 4px 8px; background: rgba(255,255,255,0.06); }
-.actions { display: flex; gap: 8px; align-items: center; }
+/* ================================
+   MODAL
+================================ */
 
-.msg { margin-top: 10px; font-size: 14px; color: var(--muted); }
-.msg.ok { color: rgba(120,255,160,0.95); }
-.hint { margin-top: 10px; }
-.hidden { display: none !important; }
-
-/* Modal */
 .modal {
   position: fixed;
   inset: 0;
@@ -306,6 +233,7 @@ input:focus, select:focus {
   padding: 16px;
   z-index: 999;
 }
+
 .modalCard {
   width: min(460px, 100%);
   background: linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.08));
@@ -313,51 +241,22 @@ input:focus, select:focus {
   border-radius: 22px;
   padding: 14px;
   box-shadow: 0 35px 90px rgba(0,0,0,0.55);
+
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  animation: pop 0.22s ease;
 }
-@keyframes pop {
-  from { transform: translateY(10px) scale(0.98); opacity: 0.6; }
-  to   { transform: translateY(0px) scale(1); opacity: 1; }
-}
-.modalTop { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.modalTop h3 { margin: 0; font-size: 18px; font-weight: 900; }
-.iconBtn {
-  width: 38px;
-  height: 38px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.16);
-  background: rgba(255,255,255,0.10);
-  color: var(--text);
-  cursor: pointer;
-  font-size: 18px;
-  box-shadow: 0 16px 26px rgba(0,0,0,0.30);
-  transition: 0.12s ease;
-}
-.iconBtn:hover { transform: translateY(-1px); background: rgba(255,255,255,0.14); }
-.modalForm { display: grid; gap: 10px; }
-.modalActions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-@media (max-width: 420px) { .modalActions { grid-template-columns: 1fr; } }
-.modalLinks { display:flex; justify-content:space-between; margin-top: 6px; }
-.linkBtn{
-  background: none;
-  border: none;
-  padding: 6px 0;
-  cursor: pointer;
-  color: rgba(6,182,212,0.95);
-  font-weight: 900;
-}
-.linkBtn:hover{ text-decoration: underline; }
 
-/* -------------------------------------------------------
-   ✅ iPhone: gjør glass litt mørkere så det matcher PC
-   (WebKit kan “vaske ut” blur ved scroll)
--------------------------------------------------------- */
+/* ================================
+   iPHONE GLASS JUSTERING
+   (hindrer at blur ser lysere ut)
+================================ */
+
 @supports (-webkit-touch-callout: none) {
   .card {
     background: linear-gradient(180deg, rgba(10,14,30,0.55), rgba(10,14,30,0.40));
-    border-color: rgba(255,255,255,0.14);
   }
-  .item { background: rgba(0,0,0,0.24); }
+
+  .item {
+    background: rgba(0,0,0,0.24);
+  }
 }

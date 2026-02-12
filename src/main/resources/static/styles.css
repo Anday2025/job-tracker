@@ -1,4 +1,4 @@
-/* styles.css — FULL (samme farge på PC og mobil) */
+/* styles.css — iPhone-stabil: samme farge PC + mobil (ingen lysning ved scroll) */
 
 /* ✅ Sakte 360° rotasjon */
 @keyframes slowRotate {
@@ -7,37 +7,50 @@
 }
 
 :root {
-  /* Deep blue background fallback */
+  /* Base */
   --bg: #0b1230;
   --bg2: #08102a;
 
-  /* Glass cards */
-  --card: rgba(255, 255, 255, 0.10);
-  --card2: rgba(255, 255, 255, 0.14);
-  --border: rgba(255, 255, 255, 0.14);
+  /* Glass */
+  --card: rgba(255,255,255,0.10);
+  --card2: rgba(255,255,255,0.14);
+  --border: rgba(255,255,255,0.14);
 
   /* Text */
-  --text: rgba(255, 255, 255, 0.92);
-  --muted: rgba(255, 255, 255, 0.62);
+  --text: rgba(255,255,255,0.92);
+  --muted: rgba(255,255,255,0.62);
 
-  /* Accent colors */
-  --primary: #3b82f6;   /* blue */
-  --primary2: #7c3aed;  /* purple */
-  --accent: #06b6d4;    /* cyan */
+  /* Accent */
+  --primary: #3b82f6;
+  --primary2: #7c3aed;
+  --accent: #06b6d4;
 
   /* Shadows */
-  --shadow: 0 22px 70px rgba(0, 0, 0, 0.45);
-  --shadowSoft: 0 18px 40px rgba(0, 0, 0, 0.25);
+  --shadow: 0 22px 70px rgba(0,0,0,0.45);
+  --shadowSoft: 0 18px 40px rgba(0,0,0,0.25);
 
   --radius: 18px;
 }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+html, body { height: 100%; margin: 0; }
 html, body { overflow-x: hidden; }
 
-/* ✅ Roterende bakgrunnsbilde (samme på PC og mobil) */
-body::before {
+/* ✅ Viktig: stabil basefarge (hindrer “lysning” ved scroll på iOS) */
+html { background: linear-gradient(180deg, var(--bg), var(--bg2)); }
+body {
+  min-height: 100svh; /* iPhone-friendly */
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  color: var(--text);
+  background-color: var(--bg); /* stabil under alle lag */
+}
+
+/* -------------------------------------------------------
+   ✅ Bakgrunn flyttet til HTML-lag (mest stabilt på iPhone)
+-------------------------------------------------------- */
+
+/* Roterende bilde-lag */
+html::before {
   content: "";
   position: fixed;
   inset: -40%;
@@ -51,34 +64,39 @@ body::before {
 
   transform-origin: center;
   animation: slowRotate 180s linear infinite;
-
   opacity: 0.38;
+
+  /* iOS-kompositering (hindrer “bleking” ved scroll) */
+  transform: translateZ(0);
   will-change: transform;
+}
+
+/* Overlay + glows (fast lag over bildet) */
+html::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+
+  background:
+    /* mørk overlay for lesbarhet */
+          linear-gradient(rgba(11,18,48,0.82), rgba(8,16,42,0.86)),
+            /* glows */
+          radial-gradient(1100px 560px at 15% 10%, rgba(59,130,246,0.22), transparent 62%),
+          radial-gradient(900px 520px at 85% 10%, rgba(124,58,237,0.18), transparent 62%),
+          radial-gradient(900px 520px at 50% 120%, rgba(6,182,212,0.16), transparent 62%);
+
+  opacity: 1;
+  transform: translateZ(0);
 }
 
 /* ✅ Slå av animasjon kun hvis brukeren ønsker mindre bevegelse */
 @media (prefers-reduced-motion: reduce) {
-  body::before { animation: none; }
+  html::before { animation: none; }
 }
 
-body {
-  margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-  color: var(--text);
-
-  /* ✅ Overlay + premium glows over bildet */
-  background:
-          linear-gradient(rgba(11,18,48,0.82), rgba(8,16,42,0.86)),
-          radial-gradient(1100px 560px at 15% 10%, rgba(59,130,246,0.22), transparent 62%),
-          radial-gradient(900px 520px at 85% 10%, rgba(124,58,237,0.18), transparent 62%),
-          radial-gradient(900px 520px at 50% 120%, rgba(6,182,212,0.16), transparent 62%),
-          linear-gradient(180deg, var(--bg), var(--bg2));
-
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-}
-
-/* Premium glow overlay */
+/* Hvis du fortsatt vil ha egen ekstra glow-div (valgfritt) */
 .bgGlow {
   position: fixed;
   inset: 0;
@@ -88,6 +106,7 @@ body {
           radial-gradient(900px 380px at 20% 100%, rgba(255,180,0,0.08), transparent 60%),
           radial-gradient(900px 380px at 80% 100%, rgba(59,130,246,0.10), transparent 62%);
   opacity: 0.95;
+  transform: translateZ(0);
 }
 
 /* Sørg for at innhold alltid ligger over bg */
@@ -105,7 +124,12 @@ header, main, footer { position: relative; z-index: 1; }
   justify-content: space-between;
   padding: 22px 0;
 }
-.brand h1 { margin: 0; font-size: 28px; letter-spacing: 0.3px; }
+
+.brand h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: 0.3px;
+}
 .brand p { margin: 6px 0 0 0; }
 .headerRight { display: flex; align-items: center; gap: 10px; }
 
@@ -116,7 +140,9 @@ header, main, footer { position: relative; z-index: 1; }
   gap: 18px;
   padding: 14px 0 26px;
 }
-@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+}
 
 /* Glass cards */
 .card {
@@ -125,17 +151,26 @@ header, main, footer { position: relative; z-index: 1; }
   border-radius: var(--radius);
   padding: 16px;
   box-shadow: var(--shadowSoft);
+
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
+
 .card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow);
   border-color: rgba(255,255,255,0.20);
 }
 
-.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
 
@@ -160,7 +195,9 @@ input, select {
   box-shadow: 0 10px 22px rgba(0,0,0,0.18);
   transition: 0.15s ease;
 }
+
 input::placeholder { color: rgba(255,255,255,0.45); }
+
 input:focus, select:focus {
   border-color: rgba(59,130,246,0.55);
   box-shadow:
@@ -186,6 +223,7 @@ input:focus, select:focus {
   background: rgba(255,255,255,0.12);
 }
 .btn:active { transform: translateY(0px); }
+
 .btn.primary {
   background: linear-gradient(135deg, var(--primary), var(--primary2));
   border-color: rgba(59,130,246,0.55);
@@ -238,8 +276,14 @@ input:focus, select:focus {
   box-shadow: 0 16px 30px rgba(0,0,0,0.22);
   transition: transform 0.14s ease, box-shadow 0.14s ease;
 }
-.item:hover { transform: translateY(-2px); box-shadow: 0 22px 40px rgba(0,0,0,0.30); }
-.item.overdue { border-color: rgba(255,90,90,0.45); box-shadow: 0 18px 32px rgba(255,90,90,0.12); }
+.item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 40px rgba(0,0,0,0.30);
+}
+.item.overdue {
+  border-color: rgba(255,90,90,0.45);
+  box-shadow: 0 18px 32px rgba(255,90,90,0.12);
+}
 
 .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .title { font-weight: 900; margin-bottom: 6px; letter-spacing: 0.1px; }
@@ -296,7 +340,7 @@ input:focus, select:focus {
 .modalActions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 @media (max-width: 420px) { .modalActions { grid-template-columns: 1fr; } }
 .modalLinks { display:flex; justify-content:space-between; margin-top: 6px; }
-.linkBtn {
+.linkBtn{
   background: none;
   border: none;
   padding: 6px 0;
@@ -304,17 +348,16 @@ input:focus, select:focus {
   color: rgba(6,182,212,0.95);
   font-weight: 900;
 }
-.linkBtn:hover { text-decoration: underline; }
+.linkBtn:hover{ text-decoration: underline; }
 
 /* -------------------------------------------------------
-   ✅ iPhone/Safari: gjør glass litt mørkere for å matche PC
-   (Safari kan gjøre blur “lysere” enn desktop.)
+   ✅ iPhone: gjør glass litt mørkere så det matcher PC
+   (WebKit kan “vaske ut” blur ved scroll)
 -------------------------------------------------------- */
 @supports (-webkit-touch-callout: none) {
   .card {
-    background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.08));
+    background: linear-gradient(180deg, rgba(10,14,30,0.55), rgba(10,14,30,0.40));
+    border-color: rgba(255,255,255,0.14);
   }
-  .item {
-    background: rgba(0,0,0,0.22);
-  }
+  .item { background: rgba(0,0,0,0.24); }
 }

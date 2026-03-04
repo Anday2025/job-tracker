@@ -25,9 +25,8 @@ const state = {
   filter: "ALL",
   lang: localStorage.getItem(STORAGE_LANG) || "no",
 
-  // auth modal state
-  authView: "login",        // login | register | forgot | resend | reset
-  resetToken: null,         // token from URL (?token=...)
+  authView: "login", // login | register | forgot | resend | reset
+  resetToken: null,
 };
 
 // =========================
@@ -35,7 +34,6 @@ const state = {
 // =========================
 const T = {
   no: {
-    title: "jobbsokertracking",
     subtitle: "Hold oversikt over søknadene dine.",
     login: "Logg inn",
     logout: "Logg ut",
@@ -43,6 +41,7 @@ const T = {
     email: "E-post",
     password: "Passord",
     confirmPassword: "Bekreft passord",
+
     newApp: "Ny søknad",
     apps: "Søknader",
     add: "Legg til",
@@ -50,10 +49,12 @@ const T = {
     loginHint: "Logg inn for å lagre og se dine søknader.",
     emptyLogin: "Ingen treff. Logg inn for å se dine søknader.",
     empty: "Ingen treff.",
+
     link: "Link",
     deadline: "Frist",
     status: "Status",
     del: "Slett",
+
     planned: "Planlagt",
     applied: "Søkt",
     interview: "Intervju",
@@ -76,7 +77,6 @@ const T = {
     resetOk: "Passord er oppdatert. Du kan logge inn nå.",
   },
   en: {
-    title: "Job application tracking",
     subtitle: "Keep track of your applications.",
     login: "Sign in",
     logout: "Sign out",
@@ -84,6 +84,7 @@ const T = {
     email: "Email",
     password: "Password",
     confirmPassword: "Confirm password",
+
     newApp: "New application",
     apps: "Applications",
     add: "Add",
@@ -91,10 +92,12 @@ const T = {
     loginHint: "Sign in to save and view your applications.",
     emptyLogin: "No results. Sign in to view your applications.",
     empty: "No results.",
+
     link: "Link",
     deadline: "Deadline",
     status: "Status",
     del: "Delete",
+
     planned: "Planned",
     applied: "Applied",
     interview: "Interview",
@@ -137,12 +140,16 @@ const closeAuth = $("#closeAuth");
 const authForm = $("#authForm");
 const authTitle = $("#authTitle");
 
-// main app
 const createForm = $("#createForm");
 const formMsg = $("#formMsg");
 const stats = $("#stats");
 const listEl = $("#list");
 const filterBtns = Array.from(document.querySelectorAll(".filter"));
+
+// Progress DOM
+const progressLabel = $("#progressLabel");
+const progressPct = $("#progressPct");
+const progressFill = $("#progressFill");
 
 // =========================
 // Helpers
@@ -152,30 +159,24 @@ function setMsg(el, text, ok = false) {
   el.textContent = text || "";
   el.classList.toggle("ok", !!ok);
 }
-
-function show(el) { el?.classList.remove("hidden");}
+function show(el) { el?.classList.remove("hidden"); }
 function hide(el) { el?.classList.add("hidden"); }
 
 function openModal() {
   if (!authModal) return;
   authModal.classList.remove("hidden");
-  document.body.classList.add("modalOpen");
   renderAuthView();
-  setTimeout(() => {
-    authForm?.querySelector("input")?.focus();
-  }, 40);
+  setTimeout(() => authForm?.querySelector("input")?.focus(), 40);
 }
-
 function closeModal() {
   if (!authModal) return;
   authModal.classList.add("hidden");
-  document.body.classList.remove("modalOpen");
 }
 
 function fmtDate(iso) {
   if (!iso) return "";
-  if (state.lang === "no"){
-    const [y, m, d] = iso.split("-");
+  if (state.lang === "no") {
+    const [y,m,d] = iso.split("-");
     return `${d}/${m}/${y}`;
   }
   return iso;
@@ -192,7 +193,6 @@ function statusLabel(s) {
   }
 }
 
-/* ✅ NEW: class for status colors */
 function statusClass(status) {
   switch ((status || "").trim().toUpperCase()) {
     case "PLANLAGT": return "status-planlagt";
@@ -204,9 +204,9 @@ function statusClass(status) {
   }
 }
 
-// Cookie-auth: viktig at vi inkluderer cookies
+// Cookie-auth
 async function apiFetch(url, options = {}) {
-  const res = await fetch(url, {
+  return fetch(url, {
     ...options,
     credentials: "include",
     headers: {
@@ -214,7 +214,6 @@ async function apiFetch(url, options = {}) {
       ...(options.headers || {}),
     },
   });
-  return res;
 }
 
 async function readError(res) {
@@ -232,7 +231,6 @@ function getQueryToken() {
   const url = new URL(window.location.href);
   return url.searchParams.get("token");
 }
-
 function clearQueryToken() {
   const url = new URL(window.location.href);
   url.searchParams.delete("token");
@@ -267,7 +265,7 @@ function renderAuthView(message = "", ok = false) {
       <input id="authEmail" type="email" autocomplete="email" placeholder="${t("email")}" required />
       <input id="authPassword" type="password" autocomplete="current-password" placeholder="${t("password")}" required />
       <div class="modalActions">
-        <button id="authSubmitBtn" class="btn primary" type="submit">
+        <button class="btn primary" type="submit">
           ${state.authView === "login" ? t("login") : t("register")}
         </button>
         <button id="toggleAuthMode" class="btn ghost" type="button">
@@ -321,7 +319,7 @@ function setAuthView(view, message = "", ok = false) {
 }
 
 // =========================
-// Rendering (main app)
+// Rendering
 // =========================
 function applyI18n() {
   const subEl = $("#t_subtitle");
@@ -331,63 +329,44 @@ function applyI18n() {
   if (logoutBtn) logoutBtn.textContent = t("logout");
   if (langBtn) langBtn.textContent = state.lang === "no" ? "NO/EN" : "EN/NO";
 
-  const newAppTitle = $("#t_newAppTitle");
-  const appsTitle = $("#t_appsTitle");
-  const addBtn = $("#t_addBtn");
-  if (newAppTitle) newAppTitle.textContent = t("newApp");
-  if (appsTitle) appsTitle.textContent = t("apps");
-  if (addBtn) addBtn.textContent = t("add");
+  $("#t_newAppTitle") && ($("#t_newAppTitle").textContent = t("newApp"));
+  $("#t_appsTitle") && ($("#t_appsTitle").textContent = t("apps"));
+  $("#t_addBtn") && ($("#t_addBtn").textContent = t("add"));
 
-  const fAll = $("#t_f_all");
-  const fPlanned = $("#t_f_planned");
-  const fApplied = $("#t_f_applied");
-  const fInterview = $("#t_f_interview");
-  const fRejected = $("#t_f_rejected");
-  const fOffer = $("#t_f_offer");
+  $("#t_f_all") && ($("#t_f_all").textContent = t("all"));
+  $("#t_f_planned") && ($("#t_f_planned").textContent = t("planned"));
+  $("#t_f_applied") && ($("#t_f_applied").textContent = t("applied"));
+  $("#t_f_interview") && ($("#t_f_interview").textContent = t("interview"));
+  $("#t_f_rejected") && ($("#t_f_rejected").textContent = t("rejected"));
+  $("#t_f_offer") && ($("#t_f_offer").textContent = t("offer"));
 
-  if (fAll) fAll.textContent = t("all");
-  if (fPlanned) fPlanned.textContent = t("planned");
-  if (fApplied) fApplied.textContent = t("applied");
-  if (fInterview) fInterview.textContent = t("interview");
-  if (fRejected) fRejected.textContent = t("rejected");
-  if (fOffer) fOffer.textContent = t("offer");
+  $("#t_companyLabel") && ($("#t_companyLabel").textContent = state.lang === "no" ? "Firma *" : "Company *");
+  $("#t_roleLabel") && ($("#t_roleLabel").textContent = state.lang === "no" ? "Stilling *" : "Role *");
+  $("#t_linkLabel") && ($("#t_linkLabel").textContent = t("link"));
+  $("#t_deadlineLabel") && ($("#t_deadlineLabel").textContent = t("deadline"));
 
-  const companyLabel = $("#t_companyLabel");
-  const roleLabel = $("#t_roleLabel");
-  const linkLabel = $("#t_linkLabel");
-  const deadlineLabel = $("#t_deadlineLabel");
+  $("#t_companyPh") && ($("#t_companyPh").placeholder = state.lang === "no" ? "F.eks. DNB / Telenor" : "e.g. DNB / Telenor");
+  $("#t_rolePh") && ($("#t_rolePh").placeholder = state.lang === "no" ? "F.eks. Junior utvikler" : "e.g. Junior developer");
+  $("#t_linkPh") && ($("#t_linkPh").placeholder = "https://...");
 
-  if (companyLabel) companyLabel.textContent = state.lang === "no" ? "Firma *" : "Company *";
-  if (roleLabel) roleLabel.textContent = state.lang === "no" ? "Stilling *" : "Role *";
-  if (linkLabel) linkLabel.textContent = t("link");
-  if (deadlineLabel) deadlineLabel.textContent = t("deadline");
-
-  const companyPh = $("#t_companyPh");
-  const rolePh = $("#t_rolePh");
-  const linkPh = $("#t_linkPh");
-
-  if (companyPh) companyPh.setAttribute("placeholder", state.lang === "no" ? "F.eks. DNB / Telenor" : "e.g. DNB / Telenor");
-  if (rolePh) rolePh.setAttribute("placeholder", state.lang === "no" ? "F.eks. Junior utvikler" : "e.g. Junior developer");
-  if (linkPh) linkPh.setAttribute("placeholder", "https://...");
-
-  const loginHint = $("#t_loginHint");
-  const emptyLogin = $("#t_emptyLogin");
-  if (loginHint) loginHint.textContent = t("loginHint");
-  if (emptyLogin) emptyLogin.textContent = state.me ? t("empty") : t("emptyLogin");
+  $("#t_loginHint") && ($("#t_loginHint").textContent = t("loginHint"));
+  $("#t_emptyLogin") && ($("#t_emptyLogin").textContent = state.me ? t("empty") : t("emptyLogin"));
 }
 
 function updateAuthUI() {
   if (state.me?.email) {
-    if (whoami) whoami.textContent = state.me.email;
+    whoami.textContent = state.me.email;
     show(whoami);
     show(logoutBtn);
     hide(loginBtn);
   } else {
-    if (whoami) whoami.textContent = "—";
+    whoami.textContent = "—";
     hide(whoami);
     hide(logoutBtn);
     show(loginBtn);
   }
+
+  document.querySelector("#t_loginHint")?.classList.toggle("hidden", !!state.me);
   applyI18n();
 }
 
@@ -398,7 +377,8 @@ function filteredApps() {
 
 function renderStats() {
   if (!stats) return;
-  const counts = { PLANLAGT: 0, SOKT: 0, INTERVJU: 0, TILBUD: 0, AVSLATT: 0 };
+
+  const counts = { PLANLAGT:0, SOKT:0, INTERVJU:0, TILBUD:0, AVSLATT:0 };
   for (const a of state.apps) {
     if (counts[a.status] !== undefined) counts[a.status]++;
   }
@@ -411,6 +391,22 @@ function renderStats() {
     `${t("offer")}: ${counts.TILBUD} • ` +
     `${t("rejected")}: ${counts.AVSLATT} • ` +
     `Total: ${total}`;
+
+  // ✅ progress target
+  const target = 100;
+  const pct = Math.min(100, Math.round((total / target) * 100));
+
+  if (progressLabel) {
+    progressLabel.textContent =
+      state.lang === "no"
+        ? `${total} søknader sendt (mål: ${target})`
+        : `${total} sent (goal: ${target})`;
+  }
+  if (progressPct) progressPct.textContent = `${pct}%`;
+  if (progressFill) progressFill.style.width = `${pct}%`;
+
+  const bar = document.querySelector(".progressBar");
+  if (bar) bar.setAttribute("aria-valuenow", String(pct));
 }
 
 function renderList() {
@@ -465,7 +461,6 @@ function renderList() {
     d.textContent = `${t("deadline")}: ${a.deadline ? fmtDate(a.deadline) : "—"}`;
     meta.appendChild(d);
 
-    // ✅ status badge with color class
     const s = document.createElement("span");
     s.className = `badge ${statusClass(a.status)}`;
     s.textContent = `${t("status")}: ${statusLabel(a.status)}`;
@@ -486,31 +481,24 @@ function renderList() {
     actions.className = "actions";
 
     const select = document.createElement("select");
-    ["PLANLAGT", "SOKT", "INTERVJU", "AVSLATT", "TILBUD"].forEach(st => {
+    ["PLANLAGT","SOKT","INTERVJU","AVSLATT","TILBUD"].forEach(st => {
       const opt = document.createElement("option");
       opt.value = st;
       opt.textContent = statusLabel(st);
       if (st === a.status) opt.selected = true;
       select.appendChild(opt);
     });
+
     select.addEventListener("change", async () => {
-      try {
-        await updateStatus(a.id, select.value);
-      } catch (e) {
-        select.value = a.status;
-        console.error(e);
-      }
+      try { await updateStatus(a.id, select.value); }
+      catch (e) { select.value = a.status; console.error(e); }
     });
 
     const delBtn = document.createElement("button");
     delBtn.className = "btn ghost";
     delBtn.textContent = t("del");
     delBtn.addEventListener("click", async () => {
-      try {
-        await deleteApp(a.id);
-      } catch (e) {
-        console.error(e);
-      }
+      try { await deleteApp(a.id); } catch (e) { console.error(e); }
     });
 
     actions.appendChild(select);
@@ -530,11 +518,7 @@ function renderList() {
 async function loadMe() {
   try {
     const res = await apiFetch(API.me, { method: "GET" });
-    if (!res.ok) {
-      state.me = null;
-      updateAuthUI();
-      return;
-    }
+    if (!res.ok) { state.me = null; updateAuthUI(); return; }
     state.me = await res.json();
     updateAuthUI();
   } catch {
@@ -544,17 +528,9 @@ async function loadMe() {
 }
 
 async function loadApps() {
-  if (!state.me) {
-    state.apps = [];
-    renderList();
-    return;
-  }
+  if (!state.me) { state.apps = []; renderList(); return; }
   const res = await apiFetch(API.apps, { method: "GET" });
-  if (!res.ok) {
-    state.apps = [];
-    renderList();
-    return;
-  }
+  if (!res.ok) { state.apps = []; renderList(); return; }
   state.apps = await res.json();
   renderList();
 }
@@ -565,7 +541,6 @@ async function doLogin(email, password) {
     body: JSON.stringify({ email, password }),
   });
   if (!res.ok) throw new Error(await readError(res));
-
   state.me = await res.json();
   updateAuthUI();
   await loadApps();
@@ -617,7 +592,6 @@ async function createApp(payload) {
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(await readError(res));
-
   const created = await res.json();
   state.apps = [created, ...state.apps];
   renderList();
@@ -629,7 +603,6 @@ async function updateStatus(id, status) {
     body: JSON.stringify({ status }),
   });
   if (!res.ok) throw new Error(await readError(res));
-
   const updated = await res.json();
   state.apps = state.apps.map(a => (a.id === id ? updated : a));
   renderList();
@@ -638,7 +611,6 @@ async function updateStatus(id, status) {
 async function deleteApp(id) {
   const res = await apiFetch(`${API.apps}/${id}`, { method: "DELETE" });
   if (!(res.status === 204 || res.ok)) throw new Error(await readError(res));
-
   state.apps = state.apps.filter(a => a.id !== id);
   renderList();
 }
@@ -661,7 +633,7 @@ authModal?.addEventListener("click", (e) => {
   if (e.target === authModal) closeModal();
 });
 
-authForm?.addEventListener("click", async (e) => {
+authForm?.addEventListener("click", (e) => {
   const btn = e.target?.closest?.("button");
   if (!btn) return;
 
@@ -684,23 +656,17 @@ authForm?.addEventListener("click", (e) => {
 
 authForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
-
   try {
     if (state.authView === "login" || state.authView === "register") {
       const email = (authForm.querySelector("#authEmail")?.value || "").trim().toLowerCase();
       const password = authForm.querySelector("#authPassword")?.value || "";
-
-      if (!email || !password) {
-        renderAuthView(t("fillEmailAndPassword"), false);
-        return;
-      }
+      if (!email || !password) return renderAuthView(t("fillEmailAndPassword"), false);
 
       if (state.authView === "register") {
         await doRegister(email, password);
         setAuthView("login", t("regOk"), true);
         return;
       }
-
       await doLogin(email, password);
       closeModal();
       return;
@@ -725,7 +691,6 @@ authForm?.addEventListener("submit", async (e) => {
     if (state.authView === "reset") {
       const newPass = authForm.querySelector("#rpNew")?.value || "";
       const confirm = authForm.querySelector("#rpConfirm")?.value || "";
-
       if (newPass !== confirm) return renderAuthView(t("passwordMismatch"), false);
       if (!state.resetToken) return renderAuthView("Token mangler", false);
 
@@ -733,7 +698,6 @@ authForm?.addEventListener("submit", async (e) => {
 
       clearQueryToken();
       state.resetToken = null;
-
       setAuthView("login", t("resetOk"), true);
       return;
     }
@@ -764,10 +728,7 @@ createForm?.addEventListener("submit", async (e) => {
   const link = (fd.get("link") || "").toString().trim();
   const deadline = (fd.get("deadline") || "").toString().trim();
 
-  if (!company || !role) {
-    setMsg(formMsg, t("companyReq"));
-    return;
-  }
+  if (!company || !role) return setMsg(formMsg, t("companyReq"));
 
   try {
     await createApp({ company, role, link, deadline });

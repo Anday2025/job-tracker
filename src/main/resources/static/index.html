@@ -11,12 +11,10 @@
 <div class="bgGlow"></div>
 
 <header class="container header">
-    <!-- ✅ klikkbar logo -->
     <a class="brand" href="/" aria-label="Gå til forsiden">
         <div class="logoText" aria-label="jobbsokertracking">
             <span class="logoGray">jobbsoker</span><span class="logoAccent">tracking</span>
         </div>
-
         <p class="muted" id="t_subtitle">Hold oversikt over søknadene dine.</p>
     </a>
 
@@ -31,7 +29,7 @@
 </header>
 
 <main class="container grid" id="main">
-    <!-- LEFT-->
+    <!-- LEFT -->
     <section class="card" id="leftCard">
         <h2 id="t_newAppTitle">Ny søknad</h2>
 
@@ -69,7 +67,22 @@
     <section class="card" id="rightCard">
         <div class="row">
             <h2 id="t_appsTitle">Søknader</h2>
-            <div class="pill" id="stats">—</div>
+
+            <!-- ✅ Stats + progress -->
+            <div class="statsBox">
+                <div class="pill" id="stats">—</div>
+
+                <div class="progressWrap" aria-label="Jobbsøker fremdrift">
+                    <div class="progressTop">
+                        <span class="progressLabel" id="progressLabel">—</span>
+                        <span class="progressPct" id="progressPct">—</span>
+                    </div>
+
+                    <div class="progressBar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                        <div class="progressFill" id="progressFill"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="filters">
@@ -91,14 +104,13 @@
     Jobbsokertracking-webappen er under aktiv utvikling og er ennå ikke ferdigstilt! <br> Anday.
 </footer>
 
-<!--MODAL-->
+<!-- MODAL -->
 <div id="authModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="authTitle">
     <div class="modalCard">
         <div class="modalTop">
             <h3 id="authTitle">Logg inn</h3>
             <button id="closeAuth" class="iconBtn" type="button" aria-label="Lukk">×</button>
         </div>
-
         <form id="authForm" class="modalForm"></form>
     </div>
 </div>

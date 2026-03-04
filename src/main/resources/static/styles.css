@@ -494,3 +494,44 @@ input:focus, select:focus {
 .linkBtn:hover{
   text-decoration: underline;
 }
+
+
+
+/* ✅ Mobil-fiks: gjør Logg ut + NO/EN alltid synlig */
+@media (max-width: 640px) {
+
+  /* Header blir to linjer */
+  .header{
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  /* Hele høyre-delen får egen linje og holder seg innenfor skjermen */
+  .headerRight{
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: nowrap;
+  }
+
+  /* E-post-pill må ikke “spise” plassen til Logg ut + NO/EN */
+  #whoami{
+    max-width: 48vw;          /* viktig */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Litt mindre knapper på mobil så alt får plass */
+  .btn{
+    padding: 9px 10px;
+    border-radius: 12px;
+  }
+
+  /* Logo litt mindre på mobil */
+  .logoText{ font-size: 26px; }
+  #t_subtitle{ font-size: 14px; }
+}

@@ -1,16 +1,16 @@
 /*
 ANIMASJON FOR BAKGRUNN
-Roterer bakgrunnsbildet sakte 360 grader
+Denne animasjonen roterer bakgrunnsbildet sakte for å gi siden mer liv.
 */
 @keyframes slowRotate {
   from { transform: rotate(0deg) scale(1.12); }
   to   { transform: rotate(360deg) scale(1.12); }
 }
 
-
 /*
-GLOBALT DESIGN-SYSTEM
-Her defineres farger, skygger og radius som brukes i hele appen
+GLOBALE CSS-VARIABLER
+Her ligger farger, skygger og andre verdier som brukes flere steder i designet.
+Det gjør det enklere å holde samme stil på hele nettsiden.
 */
 :root{
   --bg:#081A1A;
@@ -33,22 +33,24 @@ Her defineres farger, skygger og radius som brukes i hele appen
   --radius:18px;
 }
 
-
 /*
-GLOBAL RESET
-Standardiserer layout og fjerner uønsket overflow
+GRUNNINNSTILLINGER FOR HELE SIDEN
+Setter box-sizing, høyde og skjuler horisontal scrolling.
 */
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
 html,body{ overflow-x:hidden; }
 
-
 /*
-BASISBAKGRUNN
-Gir siden mørk gradient bakgrunn
+GRUNNBAKGRUNN FOR SIDEN
+Gir html-elementet en mørk gradientbakgrunn.
 */
 html{ background:linear-gradient(180deg,var(--bg),var(--bg2)); }
 
+/*
+STANDARD STIL FOR BODY
+Setter font, tekstfarge og bakgrunn.
+*/
 body{
   margin:0;
   min-height:100svh;
@@ -57,10 +59,9 @@ body{
   background-color:var(--bg);
 }
 
-
 /*
 ROTERENDE BAKGRUNNSBILDE
-Ligger bak hele nettsiden
+Bruker ::before for å legge et stort bakgrunnsbilde bak hele nettsiden.
 */
 html::before{
   content:"";
@@ -84,10 +85,9 @@ html::before{
   backface-visibility:hidden;
 }
 
-
 /*
-LYSOVERLAY
-Gir bakgrunnen glow-effekter og bedre kontrast
+OVERLAY OG GLOW-EFFEKT
+Legger mørkt lag og lysglød over bakgrunnsbildet så innholdet blir lettere å lese.
 */
 html::after{
   content:"";
@@ -104,10 +104,9 @@ html::after{
   background-repeat:no-repeat;
 }
 
-
 /*
-EKSTRA GLOW-EFFEKT
-Gir mykere lys nederst på siden
+EKSTRA GLOW-LAG
+Et ekstra lyslag som gir litt mer dybde i bakgrunnen.
 */
 .bgGlow{
   position:fixed;
@@ -120,27 +119,24 @@ Gir mykere lys nederst på siden
   opacity:0.95;
 }
 
-
 /*
-LAGER OVER BAKGRUNN
-Sørger for at innhold ligger over bakgrunnseffektene
+SØRGER FOR AT INNHOLD LIGGER OVER BAKGRUNNEN
+Gjelder header, main og footer.
 */
 header,main,footer{ position:relative; z-index:1; }
 
-
 /*
-SIDEKONTAINER
-Setter maks bredde på innhold
+HOVEDKONTAINER
+Setter maks bredde og sentrerer innholdet på siden.
 */
 .container{
   width:min(1100px, calc(100% - 28px));
   margin:0 auto;
 }
 
-
 /*
 STICKY HEADER
-Headeren blir stående fast når man scroller
+Headeren blir liggende øverst når man scroller.
 */
 .header{
   position:sticky;
@@ -158,10 +154,9 @@ Headeren blir stående fast når man scroller
   border-bottom:1px solid rgba(255,255,255,0.08);
 }
 
-
 /*
 LOGO / BRAND
-Styling for logo og hover-effekter
+Styrer oppsett og hover-effekt for logoområdet.
 */
 .brand{
   display:flex;
@@ -174,24 +169,20 @@ Styling for logo og hover-effekter
   margin-left:-8px;
   transition:transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
 }
-
 .brand:hover{
   transform:translateY(-1px);
   background:rgba(255,255,255,0.04);
   box-shadow:0 18px 30px rgba(0,0,0,0.18);
 }
-
 .brand:active{ transform:translateY(0); }
-
 .brand:focus-visible{
   outline:none;
   box-shadow:0 0 0 4px rgba(20,184,166,0.22), 0 18px 30px rgba(0,0,0,0.18);
 }
 
-
 /*
 LOGOTEKST
-Gradient og styling for logoen
+Definerer størrelse og farge for tekstlogoen.
 */
 .logoText{
   font-size:30px;
@@ -199,9 +190,7 @@ Gradient og styling for logoen
   letter-spacing:0.4px;
   line-height:1;
 }
-
 .logoGray{ color:rgba(255,255,255,0.92); }
-
 .logoAccent{
   background:linear-gradient(90deg,var(--accent),var(--primary),var(--primary2));
   -webkit-background-clip:text;
@@ -210,10 +199,9 @@ Gradient og styling for logoen
 
 .brand p{ margin:4px 0 0 0; }
 
-
 /*
-HEADER-KNAPPER
-Login, logout og språkknapper
+HØYRE DEL AV HEADER
+Brukes til login, logout og språkknapp.
 */
 .headerRight{
   display:flex;
@@ -221,10 +209,9 @@ Login, logout og språkknapper
   gap:10px;
 }
 
-
 /*
-GRID-LAYOUT
-Deler siden i to kolonner
+GRID-LAYOUT FOR HOVEDINNHOLD
+Deler siden i to kolonner på større skjermer.
 */
 .grid{
   display:grid;
@@ -232,15 +219,13 @@ Deler siden i to kolonner
   gap:18px;
   padding:14px 0 26px;
 }
-
 @media (max-width:900px){
   .grid{ grid-template-columns:1fr; }
 }
 
-
 /*
-CARD-STIL
-Glassmorphism kort brukt i appen
+KORT / PANELS
+Glassmorphism-stilen for boksene på siden.
 */
 .card{
   background:linear-gradient(180deg,var(--card2),var(--card));
@@ -252,7 +237,6 @@ Glassmorphism kort brukt i appen
   -webkit-backdrop-filter:blur(16px);
   transition:transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
-
 .card:hover{
   transform:translateY(-3px);
   border-color:rgba(45,212,191,0.28);
@@ -262,10 +246,9 @@ Glassmorphism kort brukt i appen
     0 18px 50px rgba(20,184,166,0.10);
 }
 
-
 /*
-LAYOUT FOR TOPP-RADER
-Brukes i overskrifter og statistikk
+HORISONTAL RAD
+Brukes der innhold skal ligge på samme linje, f.eks. tittel og statistikk.
 */
 .row{
   display:flex;
@@ -274,18 +257,17 @@ Brukes i overskrifter og statistikk
   gap:12px;
 }
 
-
 /*
-TEKSTHJELPERE
-Små stilklasser for tekst
+HJELPEKLASSER FOR TEKST
+muted = svakere tekst
+small = mindre tekst
 */
 .muted{ color:var(--muted); }
 .small{ font-size:13px; }
 
-
 /*
 STATISTIKK OG PROGRESSBAR
-Viser fremdrift i jobbsøking
+Plasserer statistikk og fremdriftslinje vertikalt.
 */
 .statsBox{
   display:flex;
@@ -294,10 +276,9 @@ Viser fremdrift i jobbsøking
   gap:10px;
 }
 
-
 /*
-PROGRESSBAR
-Viser prosent fremdrift
+PROGRESSBAR-BOKS
+Stil for fremdriftsvisning.
 */
 .progressWrap{
   width:min(340px, 60vw);
@@ -316,6 +297,18 @@ Viser prosent fremdrift
   margin-bottom:8px;
 }
 
+.progressLabel{
+  font-size:13px;
+  color:rgba(255,255,255,0.78);
+  font-weight:800;
+}
+
+.progressPct{
+  font-size:13px;
+  color:rgba(255,255,255,0.65);
+  font-weight:800;
+}
+
 .progressBar{
   height:10px;
   border-radius:999px;
@@ -332,13 +325,11 @@ Viser prosent fremdrift
   transition:width 0.35s ease;
 }
 
-
 /*
-FORM-STYLING
-Styling for inputfelt og labels
+SKJEMA
+Stil for labels og formfelter.
 */
 .form label{ display:block; margin:12px 0; }
-
 .form label span{
   display:block;
   font-size:13px;
@@ -346,10 +337,9 @@ Styling for inputfelt og labels
   margin-bottom:6px;
 }
 
-
 /*
 INPUTFELT
-Design for tekstfelt og select
+Felles stil for input og select.
 */
 input, select{
   width:100%;
@@ -362,11 +352,16 @@ input, select{
   box-shadow:0 10px 22px rgba(0,0,0,0.18);
   transition:0.15s ease;
 }
-
+input::placeholder{ color:rgba(255,255,255,0.45); }
+input:hover, select:hover{ border-color:rgba(45,212,191,0.22); }
+input:focus, select:focus{
+  border-color:rgba(45,212,191,0.55);
+  box-shadow:0 12px 26px rgba(20,184,166,0.18), 0 0 0 4px rgba(20,184,166,0.22);
+}
 
 /*
 KNAPPER
-Primær og sekundær knappestil
+Standard stil for alle knapper, inkludert primary og ghost.
 */
 .btn{
   border:1px solid rgba(255,255,255,0.14);
@@ -377,20 +372,46 @@ Primær og sekundær knappestil
   cursor:pointer;
   font-weight:800;
   box-shadow:0 12px 22px rgba(0,0,0,0.22);
+  transition:transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, border-color 0.12s ease;
 }
+.btn:hover{
+  transform:translateY(-1px);
+  box-shadow:0 16px 26px rgba(0,0,0,0.30);
+  background:rgba(255,255,255,0.12);
+  border-color:rgba(45,212,191,0.28);
+}
+.btn:active{ transform:translateY(0); }
 
 .btn.primary{
   background:linear-gradient(135deg,var(--primary),var(--primary2));
   border-color:rgba(45,212,191,0.30);
   color:#fff;
+  box-shadow:0 18px 34px rgba(20,184,166,0.18);
 }
-
+.btn.primary:hover{
+  box-shadow:0 22px 40px rgba(13,148,136,0.24), 0 0 0 1px rgba(45,212,191,0.10);
+}
 .btn.ghost{ background:rgba(255,255,255,0.06); }
 
+/*
+PILL-STIL
+Brukes til små etiketter som e-post og statistikk.
+*/
+.pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border:1px solid rgba(255,255,255,0.14);
+  border-radius:999px;
+  background:rgba(0,0,0,0.18);
+  font-size:13px;
+  box-shadow:0 12px 22px rgba(0,0,0,0.18);
+}
 
 /*
 FILTERKNAPPER
-Brukes for å filtrere søknadsstatus
+Knappene over søknadslisten som filtrerer på status.
 */
 .filters{
   display:flex;
@@ -398,34 +419,127 @@ Brukes for å filtrere søknadsstatus
   gap:8px;
   margin:10px 0 14px;
 }
+.filter{
+  border:1px solid rgba(255,255,255,0.14);
+  background:rgba(255,255,255,0.06);
+  color:var(--text);
+  padding:8px 10px;
+  border-radius:999px;
+  cursor:pointer;
+  font-weight:800;
+  box-shadow:0 12px 18px rgba(0,0,0,0.18);
+  transition:0.12s ease;
+}
+.filter:hover{ transform:translateY(-1px); border-color:rgba(45,212,191,0.22); }
+.filter.active{
+  background:rgba(20,184,166,0.18);
+  border-color:rgba(20,184,166,0.45);
+  box-shadow:0 16px 28px rgba(20,184,166,0.18);
+}
 
+/*
+LISTE FOR SØKNADER
+Bruker grid for å legge søknadskort under hverandre.
+*/
+.list{ display:grid; gap:10px; }
 
 /*
 SØKNADSKORT
-Kort som viser hver jobbsøknad
+Selve kortene som viser hver søknad.
 */
 .item{
   border:1px solid rgba(255,255,255,0.10);
   background:rgba(0,0,0,0.22);
   border-radius:16px;
   padding:14px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.03);
+  transition:all 0.18s ease;
+}
+.item:hover{
+  transform:translateY(-2px);
+  border-color:rgba(45,212,191,0.25);
+  box-shadow:0 20px 40px rgba(0,0,0,0.35), 0 0 0 1px rgba(20,184,166,0.15);
+}
+.item.overdue{
+  border-color:rgba(255,90,90,0.45);
+  box-shadow:0 18px 32px rgba(255,90,90,0.12), inset 0 1px 0 rgba(255,255,255,0.03);
 }
 
+/*
+INNHOLD I SØKNADSKORT
+Styrer oppsett for tittel, metadata og handlinger.
+*/
+.top{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.title{
+  font-size:18px;
+  font-weight:800;
+  letter-spacing:0.2px;
+  margin-bottom:6px;
+}
+.meta{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  align-items:center;
+  color:var(--muted);
+  font-size:13px;
+  margin-top:6px;
+}
+
+.badge{
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:999px;
+  padding:4px 8px;
+  background:rgba(255,255,255,0.06);
+}
 
 /*
 STATUSFARGER
-Gir forskjellige farger basert på status
+Fargekoder for ulike søknadsstatuser.
 */
-.status-planlagt{ background:rgba(59,130,246,0.18); }
-.status-sokt{ background:rgba(20,184,166,0.18); }
-.status-intervju{ background:rgba(234,179,8,0.18); }
-.status-tilbud{ background:rgba(34,197,94,0.18); }
-.status-avslatt{ background:rgba(239,68,68,0.18); }
+.status-planlagt{ background:rgba(59,130,246,0.18); border-color:rgba(59,130,246,0.45); color:#93c5fd; }
+.status-sokt{ background:rgba(20,184,166,0.18); border-color:rgba(20,184,166,0.45); color:#5eead4; }
+.status-intervju{ background:rgba(234,179,8,0.18); border-color:rgba(234,179,8,0.45); color:#fde68a; }
+.status-tilbud{ background:rgba(34,197,94,0.18); border-color:rgba(34,197,94,0.45); color:#86efac; }
+.status-avslatt{ background:rgba(239,68,68,0.18); border-color:rgba(239,68,68,0.45); color:#fca5a5; }
 
+.actions{ display:flex; gap:8px; align-items:center; }
+
+/*
+LINKER INNI LISTEN
+Gjør linkene hvite med hover-effekt i accent-farge.
+*/
+.list a{
+  color:#ffffff;
+  font-weight:700;
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+.list a:visited{ color:#ffffff; }
+.list a:hover{
+  color:var(--accent);
+  background:rgba(45,212,191,0.14);
+  border-radius:8px;
+  padding:2px 6px;
+}
+
+/*
+HJELPEKLASSER FOR MELDINGER
+Viser statusmeldinger, hint og skjulte elementer.
+*/
+.msg{ margin-top:10px; font-size:14px; color:var(--muted); }
+.msg.ok{ color:rgba(120,255,160,0.95); }
+.hint{ margin-top:10px; }
+.hidden{ display:none !important; }
 
 /*
 MODAL / POPUP
-Popup-vindu brukt til innlogging
+Stil for innloggingsvinduet.
 */
 .modal{
   position:fixed;
@@ -435,4 +549,101 @@ Popup-vindu brukt til innlogging
   place-items:center;
   padding:16px;
   z-index:999;
+}
+.modalCard{
+  width:min(460px, 100%);
+  background:linear-gradient(180deg, rgba(255,255,255,0.14), rgba(255,255,255,0.08));
+  border:1px solid rgba(255,255,255,0.16);
+  border-radius:22px;
+  padding:14px;
+  box-shadow:0 35px 90px rgba(0,0,0,0.55);
+  backdrop-filter:blur(18px);
+  -webkit-backdrop-filter:blur(18px);
+  animation:pop 0.22s ease;
+}
+@keyframes pop{
+  from{ transform:translateY(10px) scale(0.98); opacity:0.6; }
+  to{ transform:translateY(0) scale(1); opacity:1; }
+}
+
+.modalTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+.modalTop h3{ margin:0; font-size:18px; font-weight:900; }
+
+.iconBtn{
+  width:38px;
+  height:38px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,0.16);
+  background:rgba(255,255,255,0.10);
+  color:var(--text);
+  cursor:pointer;
+  font-size:18px;
+  box-shadow:0 16px 26px rgba(0,0,0,0.30);
+  transition:0.12s ease, border-color 0.12s ease;
+}
+.iconBtn:hover{
+  transform:translateY(-1px);
+  background:rgba(255,255,255,0.14);
+  border-color:rgba(45,212,191,0.28);
+}
+
+.modalForm{ display:grid; gap:10px; }
+
+.modalActions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+@media (max-width:420px){
+  .modalActions{ grid-template-columns:1fr; }
+}
+
+.modalLinks{
+  display:flex;
+  justify-content:space-between;
+  margin-top:6px;
+}
+.linkBtn{
+  background:none;
+  border:none;
+  padding:6px 0;
+  cursor:pointer;
+  color:rgba(45,212,191,0.95);
+  font-weight:900;
+}
+.linkBtn:hover{ text-decoration:underline; }
+
+/*
+RESPONSIV TILPASNING FOR MOBIL
+Gjør header og progress-bar mer brukervennlig på små skjermer.
+*/
+@media (max-width:640px){
+  .header{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:10px;
+  }
+  .headerRight{
+    width:100%;
+    justify-content:flex-end;
+    flex-wrap:nowrap;
+  }
+  #whoami{
+    max-width:48vw;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .btn{ padding:9px 10px; border-radius:12px; }
+  .logoText{ font-size:26px; }
+  #t_subtitle{ font-size:14px; }
+
+  .statsBox{ align-items:stretch; }
+  .progressWrap{ width:100%; }
 }

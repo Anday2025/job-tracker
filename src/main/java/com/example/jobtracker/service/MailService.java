@@ -45,14 +45,14 @@ public class MailService {
 
     public void sendPasswordChangedEmail(String to) {
         String subject = "Passord endret – jobbsokertracking";
-        String text = """
+        String text = """ 
                 Hei!
 
                 Passordet ditt ble nettopp endret.
                 Hvis dette ikke var deg, anbefaler vi at du reseter passordet umiddelbart.
 
                 Hilsen
-                jobbsokertracking
+                jobbsokertracking 
                 """;
 
         mailgunClient.sendEmail(to, subject, text);

@@ -24,6 +24,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 
+/**
+ * REST-controller for autentisering og brukeradgang.
+ * <p>
+ * Klassen håndterer registrering, e-postverifisering, innlogging,
+ * utlogging, henting av innlogget bruker, utsending av ny
+ * verifiseringslenke, glemt passord og passordtilbakestilling.
+ */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -36,6 +43,17 @@ public class AuthController {
     private final MailService mailService;
     private final AuthService authService;
 
+    /**
+     * Oppretter en ny {@code AuthController}.
+     *
+     * @param userRepository repository for brukeroppslag og lagring
+     * @param passwordEncoder komponent for hashing og validering av passord
+     * @param jwtService tjeneste for generering av JWT-token
+     * @param tokenRepo repository for verifiseringstokens
+     * @param passwordResetRepo repository for passordreset-tokens
+     * @param mailService tjeneste for utsending av e-post
+     * @param authService tjeneste som håndterer autentiseringsrelatert forretningslogikk
+     */
     public AuthController(UserRepository userRepository,
                           PasswordEncoder passwordEncoder,
                           JwtService jwtService,
@@ -52,21 +70,53 @@ public class AuthController {
         this.authService = authService;
     }
 
+    /**
+     * Request-modell for autentiseringsrelaterte forespørsler som
+     * registrering og innlogging.
+     *
+     * @param email brukerens e-postadresse
+     * @param password brukerens passord i klartekst
+     */
     public record AuthRequest(
             @Email @NotBlank String email,
             @NotBlank String password
     ) {}
 
+    /**
+     * Normaliserer en e-postadresse ved å gjøre den til små bokstaver
+     * og fjerne ledende og avsluttende mellomrom.
+     *
+     * @param email e-postadressen som skal normaliseres
+     * @return normalisert e-postadresse, eller tom streng dersom input er {@code null}
+     */
     private String normEmail(String email) {
         return email == null ? "" : email.toLowerCase().trim();
     }
 
-    // Minst 8 tegn, minst én stor bokstav, én liten bokstav og ett tall
+    /**
+     * Validerer om et passord oppfyller styrkekravene.
+     * <p>
+     * Et gyldig passord må inneholde minst 8 tegn, minst én liten bokstav,
+     * minst én stor bokstav og minst ett tall.
+     *
+     * @param password passordet som skal valideres
+     * @return {@code true} dersom passordet oppfyller kravene, ellers {@code false}
+     */
     private boolean isStrongPassword(String password) {
         if (password == null) return false;
         return password.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{8,}$");
     }
 
+    /**
+     * Oppretter og legger til en sikker sesjonscookie med JWT-token.
+     * <p>
+     * Cookien settes som {@code httpOnly} og får forskjellig
+     * {@code SameSite}-policy avhengig av om forespørselen er secure.
+     *
+     * @param request HTTP-forespørselen som brukes for å avgjøre secure/same-site
+     * @param response HTTP-responsen som cookie-headeren legges til på
+     * @param token JWT-tokenet som skal lagres i cookien
+     */
     private void setSessionCookie(HttpServletRequest request, HttpServletResponse response, String token) {
         boolean secure = request.isSecure();
         String sameSite = secure ? "None" : "Lax";
@@ -82,6 +132,12 @@ public class AuthController {
         response.addHeader("Set-Cookie", cookie.toString());
     }
 
+    /**
+     * Tømmer den eksisterende sesjonscookien.
+     *
+     * @param request HTTP-forespørselen som brukes for å avgjøre secure/same-site
+     * @param response HTTP-responsen som cookie-headeren legges til på
+     */
     private void clearSessionCookie(HttpServletRequest request, HttpServletResponse response) {
         boolean secure = request.isSecure();
         String sameSite = secure ? "None" : "Lax";
@@ -97,6 +153,15 @@ public class AuthController {
         response.addHeader("Set-Cookie", cookie.toString());
     }
 
+    /**
+     * Finner basis-URL for applikasjonen.
+     * <p>
+     * Metoden bruker først miljøvariabelen {@code APP_BASE_URL} dersom den
+     * finnes. Hvis ikke, bygges URL-en fra informasjon i HTTP-forespørselen.
+     *
+     * @param request HTTP-forespørselen som kan brukes til å bygge basis-URL
+     * @return basis-URL for applikasjonen
+     */
     private String getBaseUrl(HttpServletRequest request) {
         String baseUrl = System.getenv().getOrDefault("APP_BASE_URL", "").trim();
         if (!baseUrl.isBlank()) return baseUrl;
@@ -105,7 +170,18 @@ public class AuthController {
         return scheme + "://" + request.getServerName() + ":" + request.getServerPort();
     }
 
-    // ---------------- REGISTER ----------------
+    /**
+     * Registrerer en ny bruker og oppretter et verifiseringstoken.
+     * <p>
+     * E-post normaliseres før lagring. Passordet må oppfylle fastsatte
+     * styrkekrav. Dersom brukeren opprettes vellykket, sendes en
+     * verifiseringsmail med lenke for aktivering av kontoen.
+     *
+     * @param req request-body med e-post og passord
+     * @param request HTTP-forespørselen brukt til å bygge verifiseringslenke
+     * @return respons som bekrefter at bruker er opprettet, eller feilmelding
+     * dersom input er ugyldig eller brukeren allerede finnes
+     */
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody AuthRequest req, HttpServletRequest request) {
         String email = normEmail(req.email());
@@ -155,10 +231,19 @@ public class AuthController {
         }
     }
 
-    // ---------------- VERIFY ----------------
+    /**
+     * Verifiserer en bruker ved hjelp av et verifiseringstoken.
+     * <p>
+     * Dersom tokenet er gyldig, ikke utløpt og ikke allerede brukt,
+     * aktiveres brukerkontoen og tokenet markeres som brukt.
+     *
+     * @param token tokenet som ble sendt til brukerens e-postadresse
+     * @return respons som bekrefter verifisering, eller feilmelding dersom
+     * tokenet er ugyldig, brukt eller utløpt
+     */
     @GetMapping("/verify")
     public ResponseEntity<?> verify(@RequestParam String token) {
-        VerificationToken vt = tokenRepo.findByToken(token).orElse(null);
+        VerificationToken vt = tokenRepo.findById(token).orElse(null);
         if (vt == null) return ResponseEntity.badRequest().body(Map.of("error", "Ugyldig token"));
 
         if (vt.isUsed()) return ResponseEntity.badRequest().body(Map.of("error", "Token er allerede brukt"));
@@ -174,7 +259,15 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("ok", true, "message", "Bruker aktivert. Du kan logge inn nå."));
     }
 
-    // ---------------- LOGIN ----------------
+    /**
+     * Logger inn en aktivert bruker og oppretter en sesjonscookie med JWT.
+     *
+     * @param req request-body med e-post og passord
+     * @param request HTTP-forespørselen
+     * @param response HTTP-responsen hvor sesjonscookien legges til
+     * @return respons med brukerens e-post ved vellykket innlogging,
+     * eller feilmelding dersom legitimasjon er feil eller konto ikke er aktivert
+     */
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest req,
                                    HttpServletRequest request,
@@ -200,7 +293,13 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("email", u.getEmail()));
     }
 
-    // ---------------- ME ----------------
+    /**
+     * Henter informasjon om den innloggede brukeren.
+     *
+     * @param auth autentiseringsobjektet for gjeldende bruker
+     * @return respons med e-postadresse for innlogget bruker, eller
+     * {@code 401 Unauthorized} dersom brukeren ikke er autentisert
+     */
     @GetMapping("/me")
     public ResponseEntity<?> me(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) {
@@ -209,14 +308,30 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("email", auth.getName()));
     }
 
-    // ---------------- LOGOUT ----------------
+    /**
+     * Logger ut brukeren ved å tømme sesjonscookien.
+     *
+     * @param request HTTP-forespørselen
+     * @param response HTTP-responsen hvor tømming av cookien legges til
+     * @return respons som bekrefter vellykket utlogging
+     */
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
         clearSessionCookie(request, response);
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
-    // ---------------- RESEND VERIFICATION ----------------
+    /**
+     * Oppretter og sender en ny verifiseringslenke for en ikke-aktivert bruker.
+     * <p>
+     * Endepunktet returnerer alltid en generell OK-respons for å unngå å
+     * avsløre om en e-postadresse finnes i systemet.
+     *
+     * @param body request-body som forventes å inneholde nøkkelen {@code email}
+     * @param request HTTP-forespørselen brukt til å bygge verifiseringslenke
+     * @return generell OK-respons, eventuelt med informasjon om at ny
+     * bekreftelsesmail er sendt
+     */
     @PostMapping("/resend-verification")
     public ResponseEntity<?> resendVerification(@RequestBody Map<String, String> body, HttpServletRequest request) {
         String email = normEmail(body.get("email"));
@@ -250,7 +365,17 @@ public class AuthController {
         }
     }
 
-    // ---------------- FORGOT PASSWORD ----------------
+    /**
+     * Starter passordtilbakestilling for en bruker.
+     * <p>
+     * Dersom e-postadressen finnes, opprettes et reset-token og det sendes
+     * en e-post med lenke for å sette nytt passord. Endepunktet returnerer
+     * en generell OK-respons for å unngå å avsløre om e-postadressen finnes.
+     *
+     * @param body request-body som forventes å inneholde nøkkelen {@code email}
+     * @param request HTTP-forespørselen brukt til å bygge reset-lenke
+     * @return respons som bekrefter at forespørselen er behandlet
+     */
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body, HttpServletRequest request) {
         String email = normEmail(body.get("email"));
@@ -280,7 +405,16 @@ public class AuthController {
         ));
     }
 
-    // ---------------- RESET PASSWORD ----------------
+    /**
+     * Fullfører passordtilbakestilling ved hjelp av et gyldig reset-token.
+     * <p>
+     * Tokenet må eksistere, være ubrukt og ikke utløpt. Dersom valideringen
+     * lykkes, oppdateres brukerens passord og tokenet markeres som brukt.
+     *
+     * @param body request-body som forventes å inneholde {@code token} og nytt passord
+     * @return respons som bekrefter at passordet er oppdatert, eller feilmelding
+     * dersom token eller passord ikke er gyldig
+     */
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
         String token = body.getOrDefault("token", "").trim();

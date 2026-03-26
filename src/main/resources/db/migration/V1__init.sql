@@ -49,7 +49,7 @@ CREATE INDEX idx_password_reset_token_user_id
 -- VERIFICATION_TOKEN (for email verification)
 CREATE TABLE IF NOT EXISTS verification_token (
                                                   token VARCHAR(255) PRIMARY KEY,
-    user_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL UNIQUE,
     expires_at TIMESTAMPTZ NOT NULL,
     used BOOLEAN NOT NULL DEFAULT FALSE,
 

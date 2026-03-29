@@ -8,7 +8,7 @@ Live demo:
 https://www.jobbsokertracking.no  
 
 GitHub:  
-https://github.com/Anday2025/job-tracker  
+https://github.com/Anday2025/jobbsokertracking  
 
 
 ## Oversikt
@@ -76,7 +76,7 @@ http://localhost:8080/swagger-ui.html
 ## Kjør lokalt
 
 ```bash
-git clone https://github.com/Anday2025/job-tracker.git
+git clone https://github.com/Anday2025/jobbsokertracking.git
 cd job-tracker
 mvn spring-boot:run
 ```

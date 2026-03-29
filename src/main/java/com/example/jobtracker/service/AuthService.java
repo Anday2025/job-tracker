@@ -14,6 +14,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Tjeneste for autentiseringsrelatert forretningslogikk.
+ * <p>
+ * Klassen håndterer opprettelse av brukere som venter på verifisering,
+ * utsending av nye verifiseringstokens og opprettelse av tokens for
+ * passordtilbakestilling.
+ */
 @Service
 public class AuthService {
 
@@ -22,6 +29,14 @@ public class AuthService {
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * Oppretter en ny {@code AuthService}.
+     *
+     * @param userRepository repository for brukerdata
+     * @param verificationTokenRepository repository for verifiseringstokens
+     * @param passwordResetTokenRepository repository for passordreset-tokens
+     * @param passwordEncoder encoder for sikker hashing av passord
+     */
     public AuthService(UserRepository userRepository,
                        VerificationTokenRepository verificationTokenRepository,
                        PasswordResetTokenRepository passwordResetTokenRepository,
@@ -32,15 +47,40 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    /**
+     * Resultatobjekt for en nylig opprettet, ikke-verifisert bruker.
+     *
+     * @param email brukerens e-postadresse
+     * @param token tilhørende verifiseringstoken
+     */
     public record PendingVerification(String email, String token) {}
 
+    /**
+     * Normaliserer e-postadresse ved å gjøre den lowercase og trimme mellomrom.
+     *
+     * @param email e-postadressen som skal normaliseres
+     * @return normalisert e-postadresse, eller tom streng dersom input er {@code null}
+     */
     private String normEmail(String email) {
         return email == null ? "" : email.toLowerCase().trim();
     }
 
-    // -------------------------
-    // REGISTER (DB only)
-    // -------------------------
+    /**
+     * Oppretter en ny bruker som må verifisere e-postadressen sin før innlogging.
+     * <p>
+     * Metoden:
+     * <ul>
+     *   <li>normaliserer e-postadressen</li>
+     *   <li>sjekker at e-post finnes og ikke allerede er registrert</li>
+     *   <li>oppretter bruker med hash'et passord</li>
+     *   <li>oppretter et nytt verifiseringstoken med 24 timers gyldighet</li>
+     * </ul>
+     *
+     * @param email brukerens e-postadresse
+     * @param rawPassword brukerens passord i klartekst
+     * @return et {@link PendingVerification}-objekt med e-post og token
+     * @throws IllegalStateException dersom e-post mangler eller allerede er registrert
+     */
     @Transactional
     public PendingVerification createPendingUser(String email, String rawPassword) {
         String normalizedEmail = normEmail(email);
@@ -56,7 +96,6 @@ public class AuthService {
         user.setEnabled(false);
         userRepository.save(user);
 
-        // ✅ Opprett første verifiseringstoken
         String token = UUID.randomUUID().toString();
         Instant expiresAt = Instant.now().plus(Duration.ofHours(24));
 
@@ -67,17 +106,22 @@ public class AuthService {
         return new PendingVerification(user.getEmail(), token);
     }
 
-    // -------------------------
-    // RESEND VERIFICATION (update-or-create)
-    // -------------------------
-
+    /**
+     * Oppretter eller oppdaterer verifiseringstoken for en ikke-aktivert bruker.
+     * <p>
+     * Hvis brukeren ikke finnes eller allerede er aktivert, returneres tom streng
+     * for å unngå å avsløre informasjon om kontoens tilstand.
+     *
+     * @param email e-postadresse til brukeren
+     * @return nytt token, eller tom streng dersom bruker ikke finnes eller allerede er aktiv
+     */
     @Transactional
     public String createNewVerificationToken(String email) {
         String normalizedEmail = normEmail(email);
 
         User user = userRepository.findByEmail(normalizedEmail).orElse(null);
-        if (user == null) return "";     // ikke avslør
-        if (user.isEnabled()) return ""; // allerede aktiv
+        if (user == null) return "";
+        if (user.isEnabled()) return "";
 
         String newToken = UUID.randomUUID().toString();
         Instant expiresAt = Instant.now().plus(Duration.ofHours(24));
@@ -87,12 +131,10 @@ public class AuthService {
                 .orElse(null);
 
         if (vt == null) {
-            // ingen eksisterende rad → opprett ny
             vt = new VerificationToken(newToken, user, expiresAt);
             vt.setUsed(false);
             verificationTokenRepository.save(vt);
         } else {
-            // eksisterer → oppdater samme rad (viktig pga UNIQUE user_id)
             vt.setToken(newToken);
             vt.setExpiresAt(expiresAt);
             vt.setUsed(false);
@@ -102,16 +144,21 @@ public class AuthService {
         return newToken;
     }
 
-
-    // -------------------------
-    // FORGOT PASSWORD (as-is)
-    // -------------------------
+    /**
+     * Oppretter et nytt token for passordtilbakestilling.
+     * <p>
+     * Hvis brukeren ikke finnes, returneres tom streng for å unngå å avsløre
+     * om e-postadressen eksisterer i systemet.
+     *
+     * @param email e-postadresse til brukeren
+     * @return nytt reset-token, eller tom streng dersom bruker ikke finnes
+     */
     @Transactional
     public String createPasswordResetToken(String email) {
         String normalizedEmail = normEmail(email);
 
         User user = userRepository.findByEmail(normalizedEmail).orElse(null);
-        if (user == null) return ""; // ikke avslør
+        if (user == null) return "";
 
         String token = UUID.randomUUID().toString();
         Instant expiresAt = Instant.now().plus(Duration.ofMinutes(30));

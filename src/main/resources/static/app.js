@@ -832,6 +832,15 @@ langBtn?.addEventListener("click", () => {
   renderList();
   if (authModal && !authModal.classList.contains("hidden")) renderAuthView();
 });
+
+/**
+INIT
+Kjører når siden lastes:
+- setter språk
+- oppdaterer login-visning
+- sjekker reset-token
+- laster bruker og søknader
+*/
 (async function init() {
   applyI18n();
   updateAuthUI();

@@ -22,6 +22,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.view.RedirectView;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -157,43 +159,33 @@ public class AuthController {
     @Transactional
     @Operation(summary = "Verify account with email token")
     @GetMapping("/verify")
-    public ResponseEntity<?> verify(@RequestParam String token) {
-        try {
-            VerificationToken vt = tokenRepo.findById(token).orElse(null);
-            if (vt == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Ugyldig token"));
-            }
+    public RedirectView verify(@RequestParam String token) {
+        VerificationToken vt = tokenRepo.findById(token).orElse(null);
 
-            if (vt.isUsed()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Token er allerede brukt"));
-            }
-
-            if (vt.getExpiresAt().isBefore(Instant.now())) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Token er utløpt"));
-            }
-
-            User u = vt.getUser();
-            if (u == null) {
-                return ResponseEntity.internalServerError().body(Map.of("error", "Ingen bruker er knyttet til tokenet"));
-            }
-
-            u.setEnabled(true);
-            userRepository.save(u);
-
-            vt.setUsed(true);
-            tokenRepo.save(vt);
-
-            return ResponseEntity.ok(Map.of(
-                    "ok", true,
-                    "message", "Bruker aktivert. Du kan logge inn nå."
-            ));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body(Map.of(
-                    "error", "Verifisering feilet",
-                    "details", e.getMessage()
-            ));
+        if (vt == null) {
+            return new RedirectView("/?verified=invalid");
         }
+
+        if (vt.isUsed()) {
+            return new RedirectView("/?verified=used");
+        }
+
+        if (vt.getExpiresAt().isBefore(Instant.now())) {
+            return new RedirectView("/?verified=expired");
+        }
+
+        User u = vt.getUser();
+        if (u == null) {
+            return new RedirectView("/?verified=error");
+        }
+
+        u.setEnabled(true);
+        userRepository.save(u);
+
+        vt.setUsed(true);
+        tokenRepo.save(vt);
+
+        return new RedirectView("/?verified=success");
     }
 
     @Operation(summary = "Login and create session cookie")
